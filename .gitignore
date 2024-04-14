@@ -1,0 +1,6 @@
+*~
+*.pyc
+.eggs/
+build/
+AUTHORS
+jcli.egg-info

@@ -1,0 +1,14 @@
+# Save a ~/.jira.yml
+#
+
+auth:
+  username: foo
+  # Note that type can be 'kerberos', or 'api' - Jira discontinued other
+  # auth types
+  type: api
+  pat: true
+  key: ASDFFDSA
+
+jira:
+  server: https://issues.place.com
+
