@@ -175,6 +175,18 @@ def states_cmd(issuekey):
     click.echo(states)
 
 @click.command(
+    name="set-status"
+)
+@click.argument("issuekey")
+@click.argument("status")
+def set_state_cmd(issuekey, status):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    jobj.set_state_for_issue(issuekey, status)
+    click.echo("done.")
+
+@click.command(
     name="set-field"
 )
 @click.argument('issuekey')

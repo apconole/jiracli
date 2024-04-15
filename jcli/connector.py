@@ -123,6 +123,15 @@ class JiraConnector(object):
         state_names = [t['to']['name'] for t in transitions]
         return state_names
 
+    def set_state_for_issue(self, issue, status):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+
+        self.jira.transition_issue(issue, transition=status)
+
     def issue_url(self, issue_identifier) -> str:
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
