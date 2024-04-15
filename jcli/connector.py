@@ -202,6 +202,8 @@ class JiraConnector(object):
             issue = self.get_issue(issue)
 
         if fieldname in issue.raw['fields']:
+            if issue.raw['fields'][fieldname] is None:
+                return "None"
             if isinstance(issue.raw['fields'][fieldname], str):
                 return issue.raw['fields'][fieldname]
             elif substruct is not None:
