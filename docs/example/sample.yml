@@ -11,4 +11,10 @@ auth:
 
 jira:
   server: https://issues.place.com
-
+  issues:
+    - field:
+      name: Story Points
+    - field:
+      name: Severity
+    - field:
+      name: External Link
