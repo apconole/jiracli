@@ -7,6 +7,7 @@ import logging
 
 from jcli import myself as my_cmds
 from jcli import issues as issues_cmds
+from jcli import details as details_cmds
 
 @click.group()
 @click.option('--debug', default=False, is_flag=True,
@@ -33,6 +34,11 @@ def issues():
     """
     pass
 
+@cli.group()
+def details():
+    """Lists details about the JIRA instance"
+    """
+    pass
 
 cli.add_command(my_cmds.login_cmd)
 cli.add_command(my_cmds.myself_cmd)
@@ -43,3 +49,5 @@ issues.add_command(issues_cmds.add_comment_cmd)
 issues.add_command(issues_cmds.states_cmd)
 issues.add_command(issues_cmds.set_state_cmd)
 issues.add_command(issues_cmds.set_field_cmd)
+
+details.add_command(details_cmds.last_states_cmd)

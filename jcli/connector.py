@@ -171,7 +171,11 @@ class JiraConnector(object):
         if closed is None or closed is False:
             if query != "":
                 query += " AND "
-            query += "status != \"closed\""
+            query += "status not in ("
+            statuses = ",".join(['"' + s + '"'
+                                 for s in self.last_states_names()])
+            query += statuses
+            query += ")"
 
         return query
 
@@ -289,10 +293,30 @@ class JiraConnector(object):
     def _fetch_field_type_mapping(self):
         """Fetch field type mapping from Jira."""
         if self.jira is None:
-            raise ValueError("Jira connection is not established. Please login first.")
+            raise RuntimeError("Need to log-in first.")
 
         custom_fields = self.jira.fields()
         field_type_mapping = {field['id']: field['schema']['type']
                               for field in custom_fields if field['custom']}
 
         return field_type_mapping
+
+    def _last_states_list(self) -> list:
+        """Try to get all the final states"""
+
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        statuses = self.jira.statuses()
+        final_status = []
+
+        for status in statuses:
+            if status.statusCategory.key == 'done':
+                final_status.append(status)
+
+        return final_status
+
+    def last_states_names(self) -> list:
+
+        final_statuses = [s.name for s in self._last_states_list()]
+        return final_statuses
