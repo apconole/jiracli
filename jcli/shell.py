@@ -8,7 +8,6 @@ import logging
 from jcli import myself as my_cmds
 from jcli import issues as issues_cmds
 
-
 @click.group()
 @click.option('--debug', default=False, is_flag=True,
               help="Output more information about what's going on.")
@@ -42,3 +41,4 @@ issues.add_command(issues_cmds.list_cmd)
 issues.add_command(issues_cmds.show_cmd)
 issues.add_command(issues_cmds.add_comment_cmd)
 issues.add_command(issues_cmds.states_cmd)
+issues.add_command(issues_cmds.set_field_cmd)

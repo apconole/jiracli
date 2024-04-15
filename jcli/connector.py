@@ -170,10 +170,12 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        custom_fields = self.jira.fields()
-        custom_field_mapping = {field['id']: field['name'] for field in custom_fields if field['custom']}
+        if not hasattr(self, "_custom_field_mapping"):
+            custom_fields = self.jira.fields()
+            self._custom_field_mapping = {field['id']: field['name']
+                                          for field in custom_fields if field['custom']}
 
-        return custom_field_mapping
+        return self._custom_field_mapping
 
     def requested_fields(self) -> list:
         if self.jira is None:
@@ -191,13 +193,21 @@ class JiraConnector(object):
 
         return requested
 
-    def get_field(self, issue, fieldname) -> str:
-
+    def _get_field(self, issue, fieldname, substruct = None):
+        """Get a raw field value for an issue."""
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
         if isinstance(issue, str):
             issue = self.get_issue(issue)
+
+        if fieldname in issue.raw['fields']:
+            if isinstance(issue.raw['fields'][fieldname], str):
+                return issue.raw['fields'][fieldname]
+            elif substruct is not None:
+                return issue.raw['fields'][fieldname][substruct]
+            else:
+                return "(undecoded)"
 
         fields = self._fetch_custom_fields()
         val = None
@@ -207,7 +217,11 @@ class JiraConnector(object):
                     val = eval(f"issue.fields.{field}")
                 except:
                     val = None
+        return val
 
+    def get_field(self, issue, fieldname, substruct = None) -> str:
+        """Get a field value as a string."""
+        val = self._get_field(issue, fieldname, substruct)
         if val is None:
             return ""
 
@@ -221,3 +235,53 @@ class JiraConnector(object):
             return str(val)
         except:
             return "(unknown decode)"
+
+    def set_field(self, issue, fieldname, val):
+        """Set the field for an issue to a particular value."""
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+
+        issue_dict = {}
+        if fieldname in issue.raw['fields']:
+            val = self.convert_to_field_type(fieldname, val)
+            issue_dict = {fieldname: val}
+
+        fields = self._fetch_custom_fields()
+        for field in fields:
+            if fields[field] == fieldname:
+                val = self.convert_to_field_type(field, val)
+                issue_dict = {field: val}
+
+        issue.update(issue_dict)
+
+    def convert_to_field_type(self, field_id, field_value):
+        """Convert the field value to the appropriate type."""
+        if not hasattr(self, '_field_type_mapping'):
+            # Get field type mapping from Jira if not cached
+            self._field_type_mapping = self._fetch_field_type_mapping()
+
+        field_type = self._field_type_mapping.get(field_id)
+        if field_type is None:
+            raise ValueError(f"Field type for field with ID '{field_id}' not found.")
+
+        if field_type == "string":
+            return field_value
+        elif field_type == "number":
+            return float(field_value)
+        elif field_type == "date":
+            return datetime.strptime(field_value, "%Y-%m-%d").date()
+        # Add more conversions for other field types as needed
+
+    def _fetch_field_type_mapping(self):
+        """Fetch field type mapping from Jira."""
+        if self.jira is None:
+            raise ValueError("Jira connection is not established. Please login first.")
+
+        custom_fields = self.jira.fields()
+        field_type_mapping = {field['id']: field['schema']['type']
+                              for field in custom_fields if field['custom']}
+
+        return field_type_mapping

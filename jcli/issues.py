@@ -102,19 +102,15 @@ def show_cmd(issuekey, raw):
         return
 
     output = SEP_STR + "\n"
-    output += f"| {issue.key:<10} | {issue.raw['fields']['project']['name']:<20} | {issue.raw['fields']['assignee']['name']:<39} |\n"
+    pname = jobj.get_field(issue, 'project', 'name')
+    aname = jobj.get_field(issue, 'project', 'name')
+
+    output += f"| {issue.key:<10} | {pname:<20} | {aname:<39} |\n"
     output += SEP_STR + "\n"
-    try:
-        prio = issue.raw['fields']['priority']['name']
-    except:
-        prio = "--"
+    prio = jobj.get_field(issue, 'priority', 'name')
+    status = jobj.get_field(issue, 'status', 'name')
 
-    try:
-        status = issue.raw['fields']['status']['name']
-    except:
-        status = "--"
-
-    summ = issue.raw['fields']['summary']
+    summ = jobj.get_field(issue, 'summary')
 
     output += f"| priority: {prio:<20} | status: {status:<34} |\n"
     output += SEP_STR + "\n"
@@ -177,3 +173,27 @@ def states_cmd(issuekey):
     states = jobj.get_states_for_issue(issuekey)
 
     click.echo(states)
+
+@click.command(
+    name="set-field"
+)
+@click.argument('issuekey')
+@click.argument('fieldname')
+@click.argument('fieldvalue')
+def set_field_cmd(issuekey, fieldname, fieldvalue):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    issue = jobj.get_issue(issuekey)
+
+    if issue is None:
+        click.echo(f"Error: {issuekey} not found.")
+        sys.exit(1)
+
+    old = jobj.get_field(issue, fieldname)
+
+    jobj.set_field(issue, fieldname, fieldvalue)
+
+    new = jobj.get_field(issue, fieldname)
+
+    click.echo(f"Updated {issuekey}, set {fieldname}: {old} -> {new}")
