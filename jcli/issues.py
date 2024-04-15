@@ -9,6 +9,7 @@ from jcli.utils import issue_eval
 from jcli.utils import SEP_STR
 from jcli.utils import display_via_pager
 from jcli.utils import get_text_via_editor
+from jcli.utils import fitted_blocks
 from tabulate import tabulate
 
 LOG = logging.getLogger(__name__)
@@ -130,15 +131,17 @@ def show_cmd(issuekey, raw):
             summ = summ[75:]
     output += SEP_STR + "\n\n"
 
+    descr = jobj.get_field(issue, 'description')
+    if len(descr) > 0:
+        output += f"| Description: {' ' * 62} |\n"
+        output += f"|{'-' * 77}|\n"
+        output += fitted_blocks(descr, 75, "|")
+
     output += f"> Comments: {' ' * 65} |\n"
     for comment in issue.fields.comment.comments:
         output += f"| Author: {comment.author.displayName:<36} | {comment.created:<20} |\n"
         output += f"|{'-' * 77}|\n"
-        body = comment.body.replace('\n', ' ')
-
-        while len(body) > 0:
-            output += f"| {body[:75]:<75} |\n"
-            body = body[75:]
+        output += fitted_blocks(comment.body, 75, "|")
         output += SEP_STR + "\n"
 
     display_via_pager(output)

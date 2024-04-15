@@ -14,6 +14,17 @@ def trim_text(data, length=45) -> str:
     return data[:length - 1] + "..." \
         if length > 0 and len(data) > length else data
 
+def fitted_blocks(data, length=75, fence=None) -> str:
+    lines = data.split('\n')
+    output = ""
+
+    for line in lines:
+        while len(line) > 0:
+            output += f"{fence} {line[:length]:<{length}} {fence}\n"
+            line = line[length:]  # Corrected slicing index
+
+    return output
+
 def issue_eval(issue_obj, header_map) -> list:
     issue_details = []
     for header in header_map:
