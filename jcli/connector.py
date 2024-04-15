@@ -136,7 +136,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        issue = get_issue(issue_identifier)
+        issue = self.get_issue(issue_identifier)
 
         if issue is not None:
             self.jira.add_comment(issue, comment_body)
