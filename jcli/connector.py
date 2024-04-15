@@ -165,3 +165,59 @@ class JiraConnector(object):
             query += "status != \"closed\""
 
         return query
+
+    def _fetch_custom_fields(self) -> dict:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        custom_fields = self.jira.fields()
+        custom_field_mapping = {field['id']: field['name'] for field in custom_fields if field['custom']}
+
+        return custom_field_mapping
+
+    def requested_fields(self) -> list:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        requested = []
+
+        if 'issues' not in self.config['jira']:
+            return requested
+
+        issue_config = self.config['jira']['issues']
+        for cfg in issue_config:
+            if 'field' in cfg and 'name' in cfg['field']:
+                requested.append(cfg['field']['name'])
+
+        return requested
+
+    def get_field(self, issue, fieldname) -> str:
+
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+
+        fields = self._fetch_custom_fields()
+        val = None
+        for field in fields:
+            if fields[field] == fieldname:
+                try:
+                    val = eval(f"issue.fields.{field}")
+                except:
+                    val = None
+
+        if val is None:
+            return ""
+
+        if isinstance(val, str):
+            return val
+        if isinstance(val, dict):
+            if "name" in val:
+                return val[name]
+
+        try:
+            return str(val)
+        except:
+            return "(unknown decode)"

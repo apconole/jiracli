@@ -79,7 +79,9 @@ def list_cmd(assignee, project, jql, closed, len_, output) -> None:
     name='show'
 )
 @click.argument('issuekey')
-def show_cmd(issuekey):
+@click.option("--raw", is_flag=True, default=False,
+              help="Dump the issue details in 'raw' form.")
+def show_cmd(issuekey, raw):
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -87,6 +89,11 @@ def show_cmd(issuekey):
 
     if issue is None:
         click.echo(f"Unable to find issue: {issuekey}")
+        return
+
+    if raw is True:
+        click.echo(pprint.pprint(vars(issue)))
+        click.echo(jobj._fetch_custom_fields())
         return
 
     issue_details = issue_eval(issue, ISSUE_DETAILS_MAP)
@@ -115,6 +122,9 @@ def show_cmd(issuekey):
     output += SEP_STR + "\n"
     output += f"| summary: {' ' * 66} |\n"
     output += f"| ------- {' ' * 67} |\n"
+
+    for issue_field in jobj.requested_fields():
+        output += f"| {issue_field:<25}: {jobj.get_field(issue, issue_field):<48} |\n"
 
     if len(summ) <= 75:
         output += f"| {summ:<75} |\n"
