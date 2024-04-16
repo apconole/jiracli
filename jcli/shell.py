@@ -8,6 +8,7 @@ import logging
 from jcli import myself as my_cmds
 from jcli import issues as issues_cmds
 from jcli import details as details_cmds
+from jcli import boards as boards_cmds
 
 @click.group()
 @click.option('--debug', default=False, is_flag=True,
@@ -40,6 +41,13 @@ def details():
     """
     pass
 
+@cli.group()
+def boards():
+    """
+    Boards / Sprint related commands.
+    """
+    pass
+
 cli.add_command(my_cmds.login_cmd)
 cli.add_command(my_cmds.myself_cmd)
 
@@ -51,6 +59,9 @@ issues.add_command(issues_cmds.set_state_cmd)
 issues.add_command(issues_cmds.set_field_cmd)
 
 details.add_command(details_cmds.last_states_cmd)
+
+boards.add_command(boards_cmds.list_cmd)
+boards.add_command(boards_cmds.show_cmd)
 
 # Add a shell-cmd option when click-shell is installed
 try:
@@ -64,6 +75,7 @@ try:
     shell_cmd.add_command(my_cmds.myself_cmd)
     shell_cmd.add_command(issues)
     shell_cmd.add_command(details)
+    shell_cmd.add_command(boards)
     cli.add_command(shell_cmd)
 except:
     pass

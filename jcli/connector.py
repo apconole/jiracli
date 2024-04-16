@@ -1,5 +1,6 @@
 import datetime
 import getpass
+from jcli import utils
 from jira import JIRA
 from jira.exceptions import JIRAError
 import jira
@@ -79,6 +80,23 @@ class JiraConnector(object):
             self._login()
             # pprint.pprint(vars(self.jira))
             # pprint.pprint(vars(self.jira._session))
+
+    def user_sprint_field(self):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        # default field is called 'Sprint' for now.
+        sprint_field = "Sprint"
+
+        if 'issues' not in self.config['jira']:
+            return sprint_field
+
+        issues_cfg = self.config['jira']['issues']
+        for issue in issues_cfg:
+            if 'sprint' in issue:
+                if bool(issue['sprint']) == True:
+                    sprint_field = issue['name']
+        return sprint_field
 
     def myself(self):
         if self.jira is None:
@@ -192,16 +210,22 @@ class JiraConnector(object):
                 v = m
                 if isinstance(m, tuple):
                     oper = m[0]
-                    v = m[1]
-                query_parts.append(f'{field} {oper} "{v}"')
+                    if m[1].lower() != "empty":
+                        v = '"' + m[1] + '"'
+                    else:
+                        v = m[1]
+                query_parts.append(f'{field} {oper} {v}')
 
         for field, m in kwargs.items():
             oper = "="
             v = m
             if isinstance(m, tuple):
                 oper = m[0]
-                v = m[1]
-            query_parts.append(f'{field} {oper} "{v}"')
+                if m[1].lower() != "empty":
+                    v = '"' + m[1] + '"'
+                else:
+                    v = m[1]
+            query_parts.append(f'{field} {oper} {v}')
 
         return " AND ".join(query_parts)
 
@@ -383,3 +407,75 @@ class JiraConnector(object):
 
         final_statuses = [s.name for s in self._last_states_list()]
         return final_statuses
+
+    def fetch_boards(self, limit=0) -> list:
+        """Try to get all the boards configured in jira"""
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if limit > 0:
+            return self.jira.boards(0, limit)
+
+        return self.jira.boards(0, 0)
+
+    def fetch_board_by_name(self, boardname):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        return self.jira.boards(name=boardname)
+
+    def fetch_sprints_by_board(self, board) -> list:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(board, str):
+            name = board
+            board = self.fetch_board_by_name(name)
+            if len(board) != 1:
+                raise ValueError(f"Invalid results for {name} - ambiguous?")
+            board = board[0]
+
+        try:
+            sprints = self.jira.sprints(board.raw['id'])
+        except JIRAError:
+            # not all boards support sprints, so ignore it
+            sprints = []
+
+        return sprints
+
+    def fetch_issues_by_board(self, board) -> list:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        # This is a silly way of doing things - we need to query for all the
+        # epic types and board id details.  BUT, JQL doesn't let us query by
+        # board ID, so we need to actually pull the board configuration,
+        # without a proper pythonic API and decode it manually to get the
+        # correct JQL.
+
+        if isinstance(board, str):
+            name = board
+            board = self.fetch_board_by_name(name)
+            if len(board) != 1:
+                raise ValueError(f"Invalid results for {name} - ambiguous?")
+            board = board[0]
+
+        # Got the board ID - let's get the REST details
+        # Don't look at this too long .. it will make you sad.
+        r = self.jira.find(f"../../agile/1.0/board/{board.raw['id']}/configuration")
+        f = self.jira.filter(r.filter)
+        # let's check if the query includes closed issues:
+        query = f.jql
+
+        if 'status' not in query:
+            oldquery = query
+            query = "status not in (" + \
+                ",".join(['"' + s + '"' for s in self.last_states_names()]) + \
+                ") AND "
+            if " order " in oldquery.lower():
+                ns = utils.ireplace("order", ") order", oldquery)
+                query += "(" + ns
+
+        issues_in_epics = self._query_issues(query)
+
+        return issues_in_epics
