@@ -3,6 +3,7 @@ Utility stuff...
 """
 import codecs
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -96,3 +97,5 @@ def get_text_via_editor() -> str:
 
     return text
 
+def ireplace(old, new, text):
+    return re.sub('(?i)'+re.escape(old), lambda m: new, text)
