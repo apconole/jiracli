@@ -51,3 +51,19 @@ issues.add_command(issues_cmds.set_state_cmd)
 issues.add_command(issues_cmds.set_field_cmd)
 
 details.add_command(details_cmds.last_states_cmd)
+
+# Add a shell-cmd option when click-shell is installed
+try:
+    from click_shell import shell
+
+    @shell(prompt="jcli> ", intro="Starting...")
+    def shell_cmd():
+        pass
+
+    shell_cmd.add_command(my_cmds.login_cmd)
+    shell_cmd.add_command(my_cmds.myself_cmd)
+    shell_cmd.add_command(issues)
+    shell_cmd.add_command(details)
+    cli.add_command(shell_cmd)
+except:
+    pass

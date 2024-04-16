@@ -53,3 +53,13 @@ the auto-click-auto package, and use bash - you can simply run::
   $ eval $(_JCLI_COMPLETE=bash_source jcli)
 
 And your shell will have autocomplete for the `jcli` utility.
+
+Additionally, there is the ability to run in interactive shell mode,
+provided you've installed the `click-shell` package.  In that case,
+you can run in interactive mode with::
+
+  $ jcli shell-cmd
+  jcli> help
+
+This will give an interactive interface to the jcli suite of
+commands.
