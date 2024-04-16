@@ -2,6 +2,7 @@ import datetime
 import getpass
 from jira import JIRA
 from jira.exceptions import JIRAError
+import jira
 import os
 import pathlib
 import pprint
@@ -247,6 +248,8 @@ class JiraConnector(object):
             elif substruct is not None:
                 return issue.raw['fields'][fieldname][substruct]
             else:
+                if 'name' in issue.raw['fields'][fieldname]:
+                    return issue.raw['fields'][fieldname]['name']
                 return "(undecoded)"
 
         fields = self._fetch_custom_fields()
@@ -276,6 +279,40 @@ class JiraConnector(object):
         except:
             return "(unknown decode)"
 
+    def find_users_for_name(self, name) -> list:
+        """
+        Finds the users who match a given display name.
+        """
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        return self.jira.search_users(user=name)
+
+    def convert_to_jira_type(self, var_instance, value):
+        """
+        Converts the input from a JIRA type to a usable type based on
+        some kinds of heuristics.
+
+        Arguments:
+        - var_instance: an instance of an existing field
+        - value: The data to convert
+
+        Returns:
+        - The correct type tp put in a dict.
+        """
+        if isinstance(var_instance, jira.resources.User):
+            # Assume the input is a name and look it up
+            names = self.find_users_for_name(value)
+            if len(names) > 1:
+                raise ValueError(f"Ambiguous name {value} with {len(names)} matches.")
+            return {"name": names[0].name}
+
+        try:
+            if 'name' in var_instance:
+                return {"name": value}
+        except:
+            raise ValueError(f"Unable to handle {type(var_instance)}")
+
     def set_field(self, issue, fieldname, val):
         """Set the field for an issue to a particular value."""
         if self.jira is None:
@@ -286,7 +323,8 @@ class JiraConnector(object):
 
         issue_dict = {}
         if fieldname in issue.raw['fields']:
-            val = self.convert_to_field_type(fieldname, val)
+            f = eval(f"issue.fields.{fieldname}")
+            val = self.convert_to_jira_type(f, val)
             issue_dict = {fieldname: val}
 
         fields = self._fetch_custom_fields()
