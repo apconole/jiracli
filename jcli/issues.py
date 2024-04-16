@@ -25,7 +25,7 @@ ISSUE_DETAILS_MAP = {
 @click.command(
     name='list'
 )
-@click.option('--assignee', type=str, default=None,
+@click.option('--assignee', type=str, default="",
               help="The name of the assignee (defaults to current user)")
 @click.option('--project', type=str, default=None,
               help="The name of the project (defaults to '')")

@@ -150,34 +150,58 @@ class JiraConnector(object):
         if issue is not None:
             self.jira.add_comment(issue, comment_body)
 
-    def build_issues_query(self, assignee, project, closed):
+    def build_issues_query(self, assignee=None, project=None, closed=None,
+                           fields_dict=None, **kwargs):
         """
-        Returns a query for a list of issues
+        Returns a query for a list of issues based on provided criteria
+
+        Args:
+        - assignee (str): Assignee of the issues
+        - project (str): Project name for the issues
+        - closed (bool): Whether or not to include closed issues in the query
+        - fields_dict (dict): Dictionary of fields, where key is the field to
+                              match, and value may either be a string (with implied
+                              equality), or a tuple of (operator, value)
+        - kwargs: Additional kwargs to add to the query
+
+        Returns:
+        - str: The query
         """
-        query = ""
+        query_parts = []
 
-        if assignee is None:
-            assignee = ""
-
-        if assignee == "":
+        if assignee is not None:
+            if assignee == "":
                 assignee = self.myself()
-        query += f"assignee = \"{assignee}\""
+            query_parts.append(f'assignee = "{assignee}"')
 
         if project is not None:
-            if query != "":
-                query += " AND "
-            query += f"project = \"{project}\""
+            query_parts.append(f'project = "{project}"')
 
-        if closed is None or closed is False:
-            if query != "":
-                query += " AND "
-            query += "status not in ("
-            statuses = ",".join(['"' + s + '"'
-                                 for s in self.last_states_names()])
-            query += statuses
-            query += ")"
+        if closed is None or not closed:
+            stat_query = "status not in ("
+            statuses = ",".join(['"' + s + '"' for s in self.last_states_names()])
+            stat_query += statuses
+            stat_query += ")"
+            query_parts.append(stat_query)
 
-        return query
+        if fields_dict:
+            for field, m in fields_dict.items():
+                oper = "="
+                v = m
+                if isinstance(m, tuple):
+                    oper = m[0]
+                    v = m[1]
+                query_parts.append(f'{field} {oper} "{v}"')
+
+        for field, m in kwargs.items():
+            oper = "="
+            v = m
+            if isinstance(m, tuple):
+                oper = m[0]
+                v = m[1]
+            query_parts.append(f'{field} {oper} "{v}"')
+
+        return " AND ".join(query_parts)
 
     def _fetch_custom_fields(self) -> dict:
         if self.jira is None:
