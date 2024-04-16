@@ -204,28 +204,21 @@ class JiraConnector(object):
             stat_query += ")"
             query_parts.append(stat_query)
 
-        if fields_dict:
-            for field, m in fields_dict.items():
-                oper = "="
-                v = m
-                if isinstance(m, tuple):
-                    oper = m[0]
-                    if m[1].lower() != "empty":
-                        v = '"' + m[1] + '"'
-                    else:
+        def additional_args(query_parts, fields) -> list:
+            if fields:
+                for field, m in fields_dict.items():
+                    # need to check for field being custom.
+                    field = self._try_fieldname(field)
+                    oper = "="
+                    v = m
+                    if isinstance(m, tuple):
+                        oper = m[0]
                         v = m[1]
-                query_parts.append(f'{field} {oper} {v}')
+                    query_parts.append(f'{field} {oper} {v}')
+            return query_parts
 
-        for field, m in kwargs.items():
-            oper = "="
-            v = m
-            if isinstance(m, tuple):
-                oper = m[0]
-                if m[1].lower() != "empty":
-                    v = '"' + m[1] + '"'
-                else:
-                    v = m[1]
-            query_parts.append(f'{field} {oper} {v}')
+        query_parts = additional_args(query_parts, fields_dict)
+        query_parts = additional_args(query_parts, kwargs)
 
         return " AND ".join(query_parts)
 
@@ -255,6 +248,22 @@ class JiraConnector(object):
                 requested.append(cfg['field']['name'])
 
         return requested
+
+    def _try_fieldname(self, fieldname) -> str:
+        """Tries to pick the fieldname for a passed in field"""
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        fields = self._fetch_custom_fields()
+
+        if fieldname[0] == "^":
+            return fieldname[1:]
+
+        for k in fields:
+            if fieldname == fields[k]:
+                return k
+
+        return fieldname
 
     def _get_field(self, issue, fieldname, substruct = None):
         """Get a raw field value for an issue."""
