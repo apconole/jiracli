@@ -40,7 +40,14 @@ ISSUE_DETAILS_MAP = {
 @click.option('--output', type=click.Choice(['table', 'csv', 'simple']),
               default='table',
               help="Output format (default is 'table')")
-def list_cmd(assignee, project, jql, closed, len_, output) -> None:
+@click.option("--matching-eq", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--matching-neq", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--matching-contains", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--matching-not", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--matching-in", multiple=True, nargs=2, help="Custom JQL pair")
+def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
+             matching_neq, matching_contains, matching_not,
+             matching_in) -> None:
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -48,6 +55,13 @@ def list_cmd(assignee, project, jql, closed, len_, output) -> None:
         issues_query = jql
     else:
         qd = {}
+        for matches in [(matching_eq, "="), (matching_neq, "!="),
+                        (matching_contains, "contains"),
+                        (matching_not, "is not"),
+                        (matching_in, "in")]:
+            for f, v in matches[0]:
+                qd[f] = (matches[1], v)
+
         if assignee == "-":
             assignee = None
         issues_query = jobj.build_issues_query(assignee, project, closed,
