@@ -47,7 +47,11 @@ def list_cmd(assignee, project, jql, closed, len_, output) -> None:
     if jql is not None:
         issues_query = jql
     else:
-        issues_query = jobj.build_issues_query(assignee, project, closed)
+        qd = {}
+        if assignee == "-":
+            assignee = None
+        issues_query = jobj.build_issues_query(assignee, project, closed,
+                                               fields_dict = qd)
 
     issues = jobj._query_issues(issues_query)
     ISSUE_HEADER = []
