@@ -1,3 +1,19 @@
+v0.0.1 - 16 April 2024
+-----------------------
+    - Fixed issues with csv output (it didn't exist)
+    - Include 'status' field in the listing output
+    - Fixed an issue when adding comments where we could
+      accidentally add all whitespace as comment.
+    - Querying for issues first grabs the final states that
+      the JIRA server has configured, and then uses those to
+      check for closed issues, rather than hardcoded string.
+    - Added a command to output the final states so that future
+      query building can use them
+    - Added the option for interactive shell mode when click-shell
+      package is installed.
+    - Added state transitions.
+    - Bug fixes.
+
 v0.0.1a - 12 April 2024
 -----------------------
     - Initial development version
