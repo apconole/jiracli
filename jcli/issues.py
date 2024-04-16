@@ -74,6 +74,10 @@ def list_cmd(assignee, project, jql, closed, len_, output) -> None:
             final = tabulate(issue_list, ISSUE_HEADER, 'psql')
         elif output == 'simple':
             final = tabulate(issue_list, ISSUE_HEADER, 'simple')
+        elif output == 'csv':
+            final = ",".join(ISSUE_HEADER) + "\n"
+            for line in issue_list:
+                final += ",".join(line) + "\n"
 
         click.echo(final)
 
