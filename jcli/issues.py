@@ -2,6 +2,7 @@ import click
 import logging
 import os
 import pprint
+import sys
 
 from jcli import connector
 from jcli.utils import trim_text
@@ -159,7 +160,7 @@ def add_comment_cmd(issuekey, comment):
     if comment is None:
         comment = get_text_via_editor()
 
-    if comment is None or len(comment) == 0:
+    if comment is None or len(comment) == 0 or comment.isspace():
         click.echo("Error: No comment provided.")
         sys.exit(1)
 
