@@ -20,6 +20,7 @@ ISSUE_DETAILS_MAP = {
     "project": "raw['fields']['project']['name']",
     "priority": "raw['fields']['priority']['name']",
     "summary": "raw['fields']['summary']",
+    "status": "raw['fields']['status']['name']",
     "assignee": "raw['fields']['assignee']['name']",
 }
 
