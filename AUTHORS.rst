@@ -23,6 +23,7 @@ appearing in this code base.
 Name                        Email
 ==========================  =================================================
 Aaron Conole                aconole@redhat.com
+Mark Michelson              mmichels@redhat.com
 
 
 The following additional people are mentioned during code submission has having
