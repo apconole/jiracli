@@ -109,11 +109,11 @@ class JiraConnector(object):
 
         return result['name']
 
-    def _query_issues(self, query='') -> list:
+    def _query_issues(self, query='', startAt=0, maxResults=100) -> list:
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        issues_list = self.jira.search_issues(query, startAt=0, maxResults=100)
+        issues_list = self.jira.search_issues(query, startAt, maxResults)
         return issues_list
 
     def get_issue(self, issue_identifier):

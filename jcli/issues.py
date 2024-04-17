@@ -45,9 +45,13 @@ ISSUE_DETAILS_MAP = {
 @click.option("--matching-contains", multiple=True, nargs=2, help="Custom JQL pair")
 @click.option("--matching-not", multiple=True, nargs=2, help="Custom JQL pair")
 @click.option("--matching-in", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option('--issue-offset', type=int, default=0,
+              help="Sets the offset for pulling issues")
+@click.option('--max-issues', type=int, default=100,
+              help="Sets the max number of issues to pull")
 def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
              matching_neq, matching_contains, matching_not,
-             matching_in) -> None:
+             matching_in, issue_offset, max_issues) -> None:
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -67,7 +71,7 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
         issues_query = jobj.build_issues_query(assignee, project, closed,
                                                fields_dict = qd)
 
-    issues = jobj._query_issues(issues_query)
+    issues = jobj._query_issues(issues_query, issue_offset, max_issues)
     ISSUE_HEADER = []
 
     if len(issues) != 0:
