@@ -132,7 +132,7 @@ def show_cmd(issuekey, raw):
 
     output = SEP_STR + "\n"
     pname = jobj.get_field(issue, 'project', 'name')
-    aname = jobj.get_field(issue, 'project', 'name')
+    aname = jobj.get_field(issue, 'assignee', 'name')
 
     output += f"| {issue.key:<10} | {pname:<20} | {aname:<39} |\n"
     output += SEP_STR + "\n"
