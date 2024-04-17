@@ -68,10 +68,8 @@ def show_cmd(boardname, assignee, project, issue_offset, max_issues):
     """
     Displays the board specified by 'name'
     """
-
     jobj = connector.JiraConnector()
     jobj.login()
-
 
     columns = jobj.fetch_column_config_by_board(boardname)
     ISSUE_HEADER = [k for k in columns]
@@ -80,10 +78,11 @@ def show_cmd(boardname, assignee, project, issue_offset, max_issues):
     issues = jobj.fetch_issues_by_board(boardname, issue_offset, max_issues)
     for issue in issues:
         if assignee is not None:
-            if (('name' not in issue.raw['fields']['assignee'] and
+            if ((issue.raw['fields']['assignee'] == None) or
+                (('name' in issue.raw['fields']['assignee'] and
                 issue.fields.assignee.name.lower() != assignee.lower()) and
-                ('displayName' not in issue.raw['fields']['assignee'] and
-                 issue.fields.assignee.displayName.lower() != assignee.lower())):
+                ('displayName' in issue.raw['fields']['assignee'] and
+                 issue.fields.assignee.displayName.lower() != assignee.lower()))):
                 continue
         for k in columns:
             if issue.fields.status in columns[k]:
