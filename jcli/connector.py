@@ -403,7 +403,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        statuses = self.jira.statuses()
+        statuses = self._get_statuses()
         final_status = []
 
         for status in statuses:
@@ -417,6 +417,17 @@ class JiraConnector(object):
         final_statuses = [s.name for s in self._last_states_list()]
         return final_statuses
 
+    def _get_statuses(self):
+
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if hasattr(self, '_cached_statuses'):
+            return self._cached_statuses
+
+        self._cached_statuses = self.jira.statuses()
+        return self._cached_statuses
+
     def get_status_detail(self, statusId):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
@@ -424,7 +435,7 @@ class JiraConnector(object):
         if isinstance(statusId, jira.resources.Status):
             statusId = statusId.id
 
-        statuses = self.jira.statuses()
+        statuses = self._get_statuses()
         for status in statuses:
             if statusId == status.id or statusId == status.name:
                 return status
@@ -521,3 +532,11 @@ class JiraConnector(object):
                            for status in c.statuses]
 
         return ret
+
+    def fetch_jql_config_by_board(self, board):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+        r = self._fetch_board_config_object(board)
+        f = self.jira.filter(r.filter)
+
+        return f.jql

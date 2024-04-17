@@ -90,3 +90,23 @@ def show_cmd(boardname, assignee, project, issue_offset, max_issues):
 
     final = tabulate(issue_col_store, ISSUE_HEADER, 'psql')
     click.echo(final)
+
+@click.command(name='get-config')
+@click.argument('boardname')
+def get_config_cmd(boardname):
+    """
+    Displays the board configuration specified by 'boardname'
+    """
+
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    settings = {}
+
+    settings["filter"] = jobj.fetch_jql_config_by_board(boardname)
+    cols = jobj.fetch_column_config_by_board(boardname)
+
+    for k,v in cols.items():
+        settings[f"column.{k}"] = v
+
+    click.echo(pprint.pprint(settings))

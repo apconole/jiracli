@@ -62,6 +62,7 @@ details.add_command(details_cmds.last_states_cmd)
 
 boards.add_command(boards_cmds.list_cmd)
 boards.add_command(boards_cmds.show_cmd)
+boards.add_command(boards_cmds.get_config_cmd)
 
 # Add a shell-cmd option when click-shell is installed
 try:
