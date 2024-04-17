@@ -56,7 +56,15 @@ def list_cmd(limit):
     name='show'
 )
 @click.argument('boardname')
-def show_cmd(boardname):
+@click.option('--assignee', type=str, default=None,
+              help="The name of the assignee (defaults to all)")
+@click.option('--project', type=str, default=None,
+              help="The name of the project (defaults to '')")
+@click.option('--issue-offset', type=int, default=0,
+              help="Sets the offset for pulling issues")
+@click.option('--max-issues', type=int, default=100,
+              help="Sets the max number of issues to pull")
+def show_cmd(boardname, assignee, project, issue_offset, max_issues):
     """
     Displays the board specified by 'name'
     """
@@ -64,30 +72,22 @@ def show_cmd(boardname):
     jobj = connector.JiraConnector()
     jobj.login()
 
-    sprints = jobj.fetch_sprints_by_board(boardname)
-    click.echo(len(sprints))
 
-    issues = jobj.fetch_issues_by_board(boardname)
-    ISSUE_HEADER = []
+    columns = jobj.fetch_column_config_by_board(boardname)
+    ISSUE_HEADER = [k for k in columns]
+    issue_col_store = {k: [] for k in columns}
 
-    if len(issues) != 0:
-        issue_list = []
-        summary_pos = None
+    issues = jobj.fetch_issues_by_board(boardname, issue_offset, max_issues)
+    for issue in issues:
+        if assignee is not None:
+            if (('name' not in issue.raw['fields']['assignee'] and
+                issue.fields.assignee.name.lower() != assignee.lower()) and
+                ('displayName' not in issue.raw['fields']['assignee'] and
+                 issue.fields.assignee.displayName.lower() != assignee.lower())):
+                continue
+        for k in columns:
+            if issue.fields.status in columns[k]:
+                issue_col_store[k].append(issue)
 
-        for header in BOARD_DETAILS_MAP:
-            if header not in ISSUE_HEADER:
-                ISSUE_HEADER.append(header)
-
-        if "summary" in ISSUE_HEADER:
-            summary_pos = ISSUE_HEADER.index("summary")
-
-        for issue in issues:
-            issue_details = issue_eval(issue, BOARD_DETAILS_MAP)
-            if summary_pos != None:
-                issue_details[summary_pos] = trim_text(
-                    issue_details[summary_pos], 45
-                )
-            issue_list.append(issue_details)
-
-        final = tabulate(issue_list, ISSUE_HEADER, 'psql')
-        click.echo(final)
+    final = tabulate(issue_col_store, ISSUE_HEADER, 'psql')
+    click.echo(final)

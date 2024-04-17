@@ -417,6 +417,19 @@ class JiraConnector(object):
         final_statuses = [s.name for s in self._last_states_list()]
         return final_statuses
 
+    def get_status_detail(self, statusId):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(statusId, jira.resources.Status):
+            statusId = statusId.id
+
+        statuses = self.jira.statuses()
+        for status in statuses:
+            if statusId == status.id or statusId == status.name:
+                return status
+        return None
+
     def fetch_boards(self, limit=0) -> list:
         """Try to get all the boards configured in jira"""
         if self.jira is None:
@@ -452,15 +465,9 @@ class JiraConnector(object):
 
         return sprints
 
-    def fetch_issues_by_board(self, board) -> list:
+    def _fetch_board_config_object(self, board):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
-
-        # This is a silly way of doing things - we need to query for all the
-        # epic types and board id details.  BUT, JQL doesn't let us query by
-        # board ID, so we need to actually pull the board configuration,
-        # without a proper pythonic API and decode it manually to get the
-        # correct JQL.
 
         if isinstance(board, str):
             name = board
@@ -471,7 +478,19 @@ class JiraConnector(object):
 
         # Got the board ID - let's get the REST details
         # Don't look at this too long .. it will make you sad.
-        r = self.jira.find(f"../../agile/1.0/board/{board.raw['id']}/configuration")
+        cfg = self.jira.find(f"../../agile/1.0/board/{board.raw['id']}/configuration")
+        return cfg
+
+    def fetch_issues_by_board(self, board, issue_offset, max_issues) -> list:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        # This is a silly way of doing things - we need to query for all the
+        # epic types and board id details.  BUT, JQL doesn't let us query by
+        # board ID, so we need to actually pull the board configuration,
+        # without a proper pythonic API and decode it manually to get the
+        # correct JQL.
+        r = self._fetch_board_config_object(board)
         f = self.jira.filter(r.filter)
         # let's check if the query includes closed issues:
         query = f.jql
@@ -485,6 +504,20 @@ class JiraConnector(object):
                 ns = utils.ireplace("order", ") order", oldquery)
                 query += "(" + ns
 
-        issues_in_epics = self._query_issues(query)
+        issues_in_epics = self._query_issues(query, issue_offset, max_issues)
 
         return issues_in_epics
+
+    def fetch_column_config_by_board(self, board) -> dict:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+        r = self._fetch_board_config_object(board)
+
+        cols = r.columnConfig.columns
+
+        ret = {}
+        for c in cols:
+            ret[c.name] = [self.get_status_detail(status)
+                           for status in c.statuses]
+
+        return ret
