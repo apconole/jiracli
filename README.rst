@@ -26,7 +26,6 @@ support for distribution.  In order to install it, clone and run *pip install*::
 
 This will put the main `jiracli` utility `jcli` into your path.
 
-
 Using
 -----
 
@@ -65,7 +64,7 @@ This will give an interactive interface to the jcli suite of
 commands.
 
 Interfacing with issues
-=======================
+-----------------------
 
 Querying Issues
 ---------------
