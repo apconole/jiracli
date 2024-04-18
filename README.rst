@@ -121,6 +121,20 @@ This output can also be formatted as CSV and used in scripts such as::
 This will call notify-send for all issues on the platform where the field
 for "Response Needed" includes the current user or 'b@b.com' user.
 
+Another useful case is to check for mentions in the comments.  This is
+something we'd like to see across all issues.  For example, we may want to
+see all updates in the last day::
+
+  $ jcli issues list --mentions --updated-since="-1d"
+  +---------+------------+------------+--------------------+--------+----------+
+  | key     | project    | priority   | summary            | status | assignee |
+  +---------+------------+------------+--------------------+--------+----------+
+  | BUG-124 | PROJMAIN   | High       | The system caug... | QE     | b@b.com  |
+  +---------+------------+------------+--------------------+--------+----------+
+
+This can help to figure out which issues need responses for creating a daily
+to-do list.
+
 Display
 -------
 

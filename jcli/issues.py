@@ -45,13 +45,23 @@ ISSUE_DETAILS_MAP = {
 @click.option("--matching-contains", multiple=True, nargs=2, help="Custom JQL pair")
 @click.option("--matching-not", multiple=True, nargs=2, help="Custom JQL pair")
 @click.option("--matching-in", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--matching-gt", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--matching-lt", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--matching-ge", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--matching-le", multiple=True, nargs=2, help="Custom JQL pair")
+@click.option("--mentions", type=bool, is_flag=True, default=False,
+              help="Checks for mentions on all issues.")
+@click.option("--updated-since", type=str, default=None,
+              help="Only issues that have been updated since [ARG] - could be a date or an offset (like -1d or -3h, etc.)")
 @click.option('--issue-offset', type=int, default=0,
               help="Sets the offset for pulling issues")
 @click.option('--max-issues', type=int, default=100,
               help="Sets the max number of issues to pull")
 def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
              matching_neq, matching_contains, matching_not,
-             matching_in, issue_offset, max_issues) -> None:
+             matching_in, matching_gt, matching_lt, matching_ge, matching_le,
+             mentions, updated_since,
+             issue_offset, max_issues) -> None:
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -60,14 +70,24 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
     else:
         qd = {}
         for matches in [(matching_eq, "="), (matching_neq, "!="),
-                        (matching_contains, "contains"),
+                        (matching_contains, "~"),
                         (matching_not, "is not"),
-                        (matching_in, "in")]:
+                        (matching_in, "in"), (matching_gt, ">"),
+                        (matching_lt, "<"), (matching_ge, ">="),
+                        (matching_le, "<=")]:
             for f, v in matches[0]:
                 qd[f] = (matches[1], v)
 
         if assignee == "-":
             assignee = None
+        if mentions:
+            # Mentions is special case, so we will fill up the query
+            # to check for comments that contain our user info.
+            assignee = None
+            qd["comment"] = ("~", "currentUser()")
+        if updated_since:
+            qd["updatedDate"] = (">=", updated_since)
+
         issues_query = jobj.build_issues_query(assignee, project, closed,
                                                fields_dict = qd)
 
