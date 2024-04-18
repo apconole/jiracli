@@ -6,9 +6,8 @@ from jira.exceptions import JIRAError
 import jira
 import os
 import pathlib
-import pprint
-import tempfile
 import yaml
+
 
 class JiraConnector(object):
     def __init__(self, config_file=None):
@@ -94,7 +93,7 @@ class JiraConnector(object):
         issues_cfg = self.config['jira']['issues']
         for issue in issues_cfg:
             if 'sprint' in issue:
-                if bool(issue['sprint']) == True:
+                if bool(issue['sprint']):
                     sprint_field = issue['name']
         return sprint_field
 
@@ -265,7 +264,7 @@ class JiraConnector(object):
 
         return fieldname
 
-    def _get_field(self, issue, fieldname, substruct = None):
+    def _get_field(self, issue, fieldname, substruct=None):
         """Get a raw field value for an issue."""
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
@@ -295,7 +294,7 @@ class JiraConnector(object):
                     val = None
         return val
 
-    def get_field(self, issue, fieldname, substruct = None) -> str:
+    def get_field(self, issue, fieldname, substruct=None) -> str:
         """Get a field value as a string."""
         val = self._get_field(issue, fieldname, substruct)
         if val is None:
@@ -304,8 +303,8 @@ class JiraConnector(object):
         if isinstance(val, str):
             return val
         if isinstance(val, dict):
-            if "name" in val:
-                return val[name]
+            if 'name' in val:
+                return val['name']
 
         try:
             return str(val)

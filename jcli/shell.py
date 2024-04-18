@@ -5,10 +5,11 @@ TODO.
 import click
 import logging
 
-from jcli import myself as my_cmds
-from jcli import issues as issues_cmds
-from jcli import details as details_cmds
 from jcli import boards as boards_cmds
+from jcli import details as details_cmds
+from jcli import issues as issues_cmds
+from jcli import myself as my_cmds
+
 
 @click.group()
 @click.option('--debug', default=False, is_flag=True,
@@ -35,11 +36,13 @@ def issues():
     """
     pass
 
+
 @cli.group()
 def details():
     """Lists details about the JIRA instance"
     """
     pass
+
 
 @cli.group()
 def boards():
@@ -47,6 +50,7 @@ def boards():
     Boards / Sprint related commands.
     """
     pass
+
 
 cli.add_command(my_cmds.login_cmd)
 cli.add_command(my_cmds.myself_cmd)

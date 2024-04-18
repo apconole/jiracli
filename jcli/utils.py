@@ -8,12 +8,11 @@ import subprocess
 import sys
 import tempfile
 
-#          0123456789012345678901234567890123456789012345678901234567890123456789012345678
-SEP_STR = "+-----------------------------------------------------------------------------+"
 
 def trim_text(data, length=45) -> str:
     return data[:length - 1] + "..." \
         if length > 0 and len(data) > length else data
+
 
 def fitted_blocks(data, length=75, fence=None) -> str:
     if os.name != 'nt':
@@ -28,6 +27,7 @@ def fitted_blocks(data, length=75, fence=None) -> str:
 
     return output
 
+
 def issue_eval(issue_obj, header_map) -> list:
     issue_details = []
     for header in header_map:
@@ -39,6 +39,7 @@ def issue_eval(issue_obj, header_map) -> list:
             issue_details.append("--")
 
     return issue_details
+
 
 def _display_via_pager(pager, output):
     env = dict(os.environ)
@@ -74,12 +75,14 @@ def _display_via_pager(pager, output):
         else:
             break
 
+
 def display_via_pager(output):
     pager = os.environ.get('PAGER')
     if not pager:
         pager = 'less'
 
     _display_via_pager(pager, output)
+
 
 def get_text_via_editor() -> str:
     text = ""
@@ -99,5 +102,6 @@ def get_text_via_editor() -> str:
 
     return text
 
+
 def ireplace(old, new, text):
-    return re.sub('(?i)'+re.escape(old), lambda m: new, text)
+    return re.sub('(?i)' + re.escape(old), lambda m: new, text)

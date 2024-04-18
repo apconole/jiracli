@@ -1,17 +1,15 @@
 import click
 import logging
-import os
 import pprint
 import shutil
 import sys
 
 from jcli import connector
-from jcli.utils import trim_text
-from jcli.utils import issue_eval
-from jcli.utils import SEP_STR
 from jcli.utils import display_via_pager
-from jcli.utils import get_text_via_editor
 from jcli.utils import fitted_blocks
+from jcli.utils import get_text_via_editor
+from jcli.utils import issue_eval
+from jcli.utils import trim_text
 from tabulate import tabulate
 
 LOG = logging.getLogger(__name__)
@@ -24,6 +22,7 @@ ISSUE_DETAILS_MAP = {
     "status": "raw['fields']['status']['name']",
     "assignee": "raw['fields']['assignee']['name']",
 }
+
 
 @click.command(
     name='list'
@@ -90,7 +89,7 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
             qd["updatedDate"] = (">=", updated_since)
 
         issues_query = jobj.build_issues_query(assignee, project, closed,
-                                               fields_dict = qd)
+                                               fields_dict=qd)
 
     issues = jobj._query_issues(issues_query, issue_offset, max_issues)
     ISSUE_HEADER = []
@@ -108,7 +107,7 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
 
         for issue in issues:
             issue_details = issue_eval(issue, ISSUE_DETAILS_MAP)
-            if summary_pos != None:
+            if summary_pos is not None:
                 issue_details[summary_pos] = trim_text(
                     issue_details[summary_pos], len_
                 )
@@ -124,6 +123,7 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
                 final += ",".join(line) + "\n"
 
         click.echo(final)
+
 
 @click.command(
     name='show'
@@ -158,21 +158,21 @@ def show_cmd(issuekey, raw, width):
         click.echo(f"Error with {issuekey}")
         return
 
-    output = "+" + '-' * (max_width-2) + "+\n"
+    output = "+" + '-' * (max_width - 2) + "+\n"
     pname = jobj.get_field(issue, 'project', 'name')
     aname = jobj.get_field(issue, 'assignee', 'name')
 
     output += f"| {issue.key:<10} | {pname:<20} | {aname:<39} |\n"
-    output += "+" + '-' * (max_width-2) + "+\n"
+    output += "+" + '-' * (max_width - 2) + "+\n"
     prio = jobj.get_field(issue, 'priority', 'name')
     status = jobj.get_field(issue, 'status', 'name')
 
     summ = jobj.get_field(issue, 'summary')
 
     output += f"| priority: {prio:<20} | status: {status:<34} |\n"
-    output += "+" + '-' * (max_width-2) + "+\n"
+    output += "+" + '-' * (max_width - 2) + "+\n"
     output += f"| URL: {jobj.issue_url(issuekey):<{max_width - 9}} |\n"
-    output += "+" + '-' * (max_width-2) + "+\n"
+    output += "+" + '-' * (max_width - 2) + "+\n"
     output += f"| summary: {' ' * (max_width - 13)} |\n"
     output += f"| ------- {' ' * (max_width - 12)} |\n"
 
@@ -185,7 +185,7 @@ def show_cmd(issuekey, raw, width):
         while len(summ) > 0:
             output += f"| {summ[:max_width - 4]:<{max_width - 4}} |\n"
             summ = summ[max_width - 4:]
-    output += "+" + '-' * (max_width-2) + "+\n\n"
+    output += "+" + '-' * (max_width - 2) + "+\n\n"
 
     descr = jobj.get_field(issue, 'description')
     if len(descr) > 0:
@@ -198,9 +198,10 @@ def show_cmd(issuekey, raw, width):
         output += f"| Author: {comment.author.displayName:<36} | {comment.created:<20} |\n"
         output += f"|{'-' * (max_width - 2)}|\n"
         output += fitted_blocks(comment.body, max_width - 4, "|")
-        output += "+" + '-' * (max_width-2) + "+\n"
+        output += "+" + '-' * (max_width - 2) + "+\n"
 
     display_via_pager(output)
+
 
 @click.command(
     name="add-comment"
@@ -221,6 +222,7 @@ def add_comment_cmd(issuekey, comment):
 
     jobj.add_comment(issuekey, comment)
 
+
 @click.command(
     name="states"
 )
@@ -233,6 +235,7 @@ def states_cmd(issuekey):
 
     click.echo(states)
 
+
 @click.command(
     name="set-status"
 )
@@ -244,6 +247,7 @@ def set_state_cmd(issuekey, status):
 
     jobj.set_state_for_issue(issuekey, status)
     click.echo("done.")
+
 
 @click.command(
     name="set-field"

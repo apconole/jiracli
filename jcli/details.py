@@ -1,8 +1,6 @@
 import click
-import logging
-import os
-
 from jcli import connector
+
 
 @click.command(
     name='last-states'

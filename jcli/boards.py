@@ -1,16 +1,11 @@
 import click
 import logging
-import os
 import pprint
-import sys
 
 from jcli import connector
-from jcli.utils import trim_text
-from jcli.utils import issue_eval
-from jcli.utils import SEP_STR
 from jcli.utils import display_via_pager
-from jcli.utils import get_text_via_editor
-from jcli.utils import fitted_blocks
+from jcli.utils import issue_eval
+
 from tabulate import tabulate
 
 LOG = logging.getLogger(__name__)
@@ -28,6 +23,7 @@ BOARD_DETAILS_MAP = {
     "status": "raw['fields']['status']['name']",
     "assignee": "raw['fields']['assignee']['name']",
 }
+
 
 @click.command(
     name="list"
@@ -50,7 +46,8 @@ def list_cmd(limit):
         boards_out.append(board_details)
 
     out = tabulate(boards_out, BOARD_HEADER_MAP, 'psql')
-    click.echo(out)
+    display_via_pager(out)
+
 
 @click.command(
     name='show'
@@ -78,18 +75,19 @@ def show_cmd(boardname, assignee, project, issue_offset, max_issues):
     issues = jobj.fetch_issues_by_board(boardname, issue_offset, max_issues)
     for issue in issues:
         if assignee is not None:
-            if ((issue.raw['fields']['assignee'] == None) or
+            if ((issue.raw['fields']['assignee'] is None) or
                 (('name' in issue.raw['fields']['assignee'] and
-                issue.fields.assignee.name.lower() != assignee.lower()) and
-                ('displayName' in issue.raw['fields']['assignee'] and
-                 issue.fields.assignee.displayName.lower() != assignee.lower()))):
+                  issue.fields.assignee.name.lower() != assignee.lower()) and
+                 ('displayName' in issue.raw['fields']['assignee'] and
+                  issue.fields.assignee.displayName.lower() != assignee.lower()))):
                 continue
         for k in columns:
             if issue.fields.status in columns[k]:
                 issue_col_store[k].append(issue)
 
     final = tabulate(issue_col_store, ISSUE_HEADER, 'psql')
-    click.echo(final)
+    display_via_pager(final)
+
 
 @click.command(name='get-config')
 @click.argument('boardname')
@@ -106,7 +104,7 @@ def get_config_cmd(boardname):
     settings["filter"] = jobj.fetch_jql_config_by_board(boardname)
     cols = jobj.fetch_column_config_by_board(boardname)
 
-    for k,v in cols.items():
+    for k, v in cols.items():
         settings[f"column.{k}"] = v
 
     click.echo(pprint.pprint(settings))
