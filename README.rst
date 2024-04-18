@@ -187,6 +187,37 @@ temporary file which will be pushed to the issue as a comment.  Alternatively,
 the **add-comment** command can accept a `--comment` option to fill a comment
 from the command line directly.
 
+Comment Formatting
+------------------
+
+Tagging an individual in a comment involves using `[]` tags.  For example::
+
+  This is a mention of [~b@b.com] in a comment
+
+This will be the value of the JIRA name.
+
+Adding links in the comment markdown can be done with::
+
+  [link-text|url]
+
+Drop all formatting::
+
+  {noformat}
+  text
+  {noformat}
+
+Add code that looks like c/c++/java (maybe even bash?)::
+
+  {code:java}
+  int foo(char c) {
+     char bar;
+
+     return c + bar;
+  }
+  {code}
+
+The full reference for JIRA's markdown is documented elsewhere.
+
 Setting fields
 --------------
 
