@@ -16,6 +16,8 @@ def trim_text(data, length=45) -> str:
         if length > 0 and len(data) > length else data
 
 def fitted_blocks(data, length=75, fence=None) -> str:
+    if os.name != 'nt':
+        data = data.replace('\r', '')
     lines = data.split('\n')
     output = ""
 
