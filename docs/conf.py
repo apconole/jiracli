@@ -4,12 +4,6 @@
 
 import jcli
 
-try:
-    import sphinx_rtd_theme
-    has_rtd_theme = True
-except ImportError:
-    has_rtd_theme = False
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -55,5 +49,4 @@ suppress_warnings = ['image.nonlocal_uri']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-if has_rtd_theme:
-    html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinx_rtd_theme'
