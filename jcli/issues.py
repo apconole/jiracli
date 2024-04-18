@@ -2,6 +2,7 @@ import click
 import logging
 import os
 import pprint
+import shutil
 import sys
 
 from jcli import connector
@@ -130,7 +131,9 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
 @click.argument('issuekey')
 @click.option("--raw", is_flag=True, default=False,
               help="Dump the issue details in 'raw' form.")
-def show_cmd(issuekey, raw):
+@click.option("--width", type=int, default=0,
+              help="Use a set width for display.  Default of '0' will set the display based on the terminal width.")
+def show_cmd(issuekey, raw, width):
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -145,52 +148,57 @@ def show_cmd(issuekey, raw):
         click.echo(jobj._fetch_custom_fields())
         return
 
+    # Get terminal width and adjust max width
+    if width == 0:
+        width = shutil.get_terminal_size().columns - 2
+    max_width = max(width, 79)
+
     issue_details = issue_eval(issue, ISSUE_DETAILS_MAP)
     if issue_details is None:
         click.echo(f"Error with {issuekey}")
         return
 
-    output = SEP_STR + "\n"
+    output = "+" + '-' * (max_width-2) + "+\n"
     pname = jobj.get_field(issue, 'project', 'name')
     aname = jobj.get_field(issue, 'assignee', 'name')
 
     output += f"| {issue.key:<10} | {pname:<20} | {aname:<39} |\n"
-    output += SEP_STR + "\n"
+    output += "+" + '-' * (max_width-2) + "+\n"
     prio = jobj.get_field(issue, 'priority', 'name')
     status = jobj.get_field(issue, 'status', 'name')
 
     summ = jobj.get_field(issue, 'summary')
 
     output += f"| priority: {prio:<20} | status: {status:<34} |\n"
-    output += SEP_STR + "\n"
-    output += f"| URL: {jobj.issue_url(issuekey):<70} |\n"
-    output += SEP_STR + "\n"
-    output += f"| summary: {' ' * 66} |\n"
-    output += f"| ------- {' ' * 67} |\n"
+    output += "+" + '-' * (max_width-2) + "+\n"
+    output += f"| URL: {jobj.issue_url(issuekey):<{max_width - 9}} |\n"
+    output += "+" + '-' * (max_width-2) + "+\n"
+    output += f"| summary: {' ' * (max_width - 13)} |\n"
+    output += f"| ------- {' ' * (max_width - 12)} |\n"
 
     for issue_field in jobj.requested_fields():
-        output += f"| {issue_field:<25}: {jobj.get_field(issue, issue_field):<48} |\n"
+        output += f"| {issue_field:<25}: {jobj.get_field(issue, issue_field):<{max_width - 31}} |\n"
 
-    if len(summ) <= 75:
-        output += f"| {summ:<75} |\n"
+    if len(summ) <= max_width - 4:
+        output += f"| {summ:<{max_width - 4}} |\n"
     else:
         while len(summ) > 0:
-            output += f"| {summ[:75]:<75} |\n"
-            summ = summ[75:]
-    output += SEP_STR + "\n\n"
+            output += f"| {summ[:max_width - 4]:<{max_width - 4}} |\n"
+            summ = summ[max_width - 4:]
+    output += "+" + '-' * (max_width-2) + "+\n\n"
 
     descr = jobj.get_field(issue, 'description')
     if len(descr) > 0:
-        output += f"| Description: {' ' * 62} |\n"
-        output += f"|{'-' * 77}|\n"
-        output += fitted_blocks(descr, 75, "|")
+        output += f"| Description: {' ' * (max_width - 17)} |\n"
+        output += f"|{'-' * (max_width - 2)}|\n"
+        output += fitted_blocks(descr, max_width - 4, "|")
 
-    output += f"> Comments: {' ' * 65} |\n"
+    output += f"+ Comments: {' ' * (max_width - 14)} |\n"
     for comment in issue.fields.comment.comments:
         output += f"| Author: {comment.author.displayName:<36} | {comment.created:<20} |\n"
-        output += f"|{'-' * 77}|\n"
-        output += fitted_blocks(comment.body, 75, "|")
-        output += SEP_STR + "\n"
+        output += f"|{'-' * (max_width - 2)}|\n"
+        output += fitted_blocks(comment.body, max_width - 4, "|")
+        output += "+" + '-' * (max_width-2) + "+\n"
 
     display_via_pager(output)
 
