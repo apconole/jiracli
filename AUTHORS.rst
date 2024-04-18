@@ -24,7 +24,7 @@ Name                        Email
 ==========================  =================================================
 Aaron Conole                aconole@redhat.com
 Mark Michelson              mmichels@redhat.com
-
+==========================  =================================================
 
 The following additional people are mentioned during code submission has having
 provided helpful bug reports, suggestions, or additional testing.
@@ -32,5 +32,7 @@ provided helpful bug reports, suggestions, or additional testing.
 ==========================  =================================================
 Name                        Email
 ==========================  =================================================
+Flavio Leitner              fbl@sysclose.org
 Lon Hohberger               lhh@redhat.com
 Vrinda Punj                 vpunj@redhat.com
+==========================  =================================================
