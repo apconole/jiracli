@@ -23,6 +23,7 @@ appearing in this code base.
 Name                        Email
 ==========================  =================================================
 Aaron Conole                aconole@redhat.com
+Chris Van Hoof              vanhoof@ouwish.com
 Mark Michelson              mmichels@redhat.com
 ==========================  =================================================
 
@@ -32,7 +33,6 @@ provided helpful bug reports, suggestions, or additional testing.
 ==========================  =================================================
 Name                        Email
 ==========================  =================================================
-Chris Van Hoof              vanhoof@redhat.com
 Flavio Leitner              fbl@sysclose.org
 Lon Hohberger               lhh@redhat.com
 Vrinda Punj                 vpunj@redhat.com
