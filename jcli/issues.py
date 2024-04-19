@@ -3,6 +3,7 @@ import logging
 import pprint
 import shutil
 import sys
+import csv
 
 from jcli import connector
 from jcli.utils import display_via_pager
@@ -272,3 +273,34 @@ def set_field_cmd(issuekey, fieldname, fieldvalue):
     new = jobj.get_field(issue, fieldname)
 
     click.echo(f"Updated {issuekey}, set {fieldname}: {old} -> {new}")
+
+@click.command(
+    name="set-field-from-csv"
+)
+@click.argument('csvfile', type=click.Path(exists=True))
+def set_field_from_csv_cmd(csvfile):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    with open(csvfile, mode='r', newline='') as file:
+        reader = csv.reader(file)
+        ## [vanhoof] we assume no header is set, if one is set we can ignore it with:
+        #next(reader, None)
+
+        for row in reader:
+            if len(row) < 3:
+                click.echo(f"Skipping invalid row: {row}")
+                continue
+
+            issuekey, fieldname, fieldvalue = row[0], row[1], row[2]
+            issue = jobj.get_issue(issuekey)
+
+            if issue is None:
+                click.echo(f"Error: {issuekey} not found.")
+                continue
+
+            old = jobj.get_field(issue, fieldname)
+            jobj.set_field(issue, fieldname, fieldvalue)
+            new = jobj.get_field(issue, fieldname)
+            
+            click.echo(f"Updated {issuekey}, set {fieldname}: {old} -> {new}")

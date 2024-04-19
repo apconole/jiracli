@@ -61,6 +61,7 @@ issues.add_command(issues_cmds.add_comment_cmd)
 issues.add_command(issues_cmds.states_cmd)
 issues.add_command(issues_cmds.set_state_cmd)
 issues.add_command(issues_cmds.set_field_cmd)
+issues.add_command(issues_cmds.set_field_from_csv_cmd)
 
 details.add_command(details_cmds.last_states_cmd)
 
