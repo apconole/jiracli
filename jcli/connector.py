@@ -339,6 +339,9 @@ class JiraConnector(object):
                 raise ValueError(f"Ambiguous name {value} with {len(names)} matches.")
             return {"name": names[0].name}
 
+        if isinstance(var_instance, jira.resources.Priority):
+            return {"name": value}
+
         try:
             if 'name' in var_instance:
                 return {"name": value}
