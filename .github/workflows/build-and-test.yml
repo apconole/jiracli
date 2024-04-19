@@ -10,6 +10,8 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
         os: [ ubuntu-latest, windows-latest, macos-latest ]
+    env:
+      WINBUILD: ${{ matrix.os == 'windows-latest' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +24,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Install PyTest and flake8
-        run: pip install pytest flake8
+        run: pip install pytest pytest-cov flake8
       - name: Check with flake8
         run: |
           flake8 . --count --ignore=E722,E501,W504
+      - name: Check with pytest (Non-windows)
+        if: env.WINBUILD != 'true'
+        run: |
+          PYTHONPATH="." pytest -s -vv --doctest-modules --junitxml=test-results.xml --cov=com --cov-report=xml --cov-report=html
