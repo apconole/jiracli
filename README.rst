@@ -49,9 +49,13 @@ One other convenient change to make to your environment is to use
 `auto-click-auto` to generate a shell completion.  If you've installed
 the auto-click-auto package, and use bash - you can simply run::
 
-  $ eval $(_JCLI_COMPLETE=bash_source jcli)
+  $ eval "$(_JCLI_COMPLETE=bash_source jcli)"
 
-And your shell will have autocomplete for the `jcli` utility.
+Alternatively::
+
+  $ source <(_JCLI_COMPLETE=bash_source jcli)
+
+And your shell should have autocomplete for the `jcli` utility.
 
 Additionally, there is the ability to run in interactive shell mode,
 provided you've installed the `click-shell` package.  In that case,
