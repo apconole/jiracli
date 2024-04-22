@@ -6,7 +6,6 @@ from jira.exceptions import JIRAError
 import jira
 import os
 import pathlib
-import pprint
 import yaml
 
 
