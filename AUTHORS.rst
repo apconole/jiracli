@@ -33,6 +33,7 @@ provided helpful bug reports, suggestions, or additional testing.
 ==========================  =================================================
 Name                        Email
 ==========================  =================================================
+Eelco Chaudron              echaudro@redhat.com
 Flavio Leitner              fbl@sysclose.org
 Lon Hohberger               lhh@redhat.com
 Vrinda Punj                 vpunj@redhat.com
