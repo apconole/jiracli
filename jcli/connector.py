@@ -6,6 +6,7 @@ from jira.exceptions import JIRAError
 import jira
 import os
 import pathlib
+import pprint
 import yaml
 
 
@@ -542,3 +543,53 @@ class JiraConnector(object):
         f = self.jira.filter(r.filter)
 
         return f.jql
+
+    def fetch_quickfilters_by_board(self, board):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(board, str):
+            name = board
+            board = self.fetch_board_by_name(name)
+            if len(board) != 1:
+                raise ValueError(f"Invalid results for {name} - ambiguous?")
+            board = board[0]
+
+        # Boards are a total hack, and this is also sad.
+        # Rather than a direct link somewhere to quickfilters, we need to
+        # use the greenhopper endpoint to find the quickfilter config
+        cfg = self.jira.find(f"../../greenhopper/1.0/rapidviewconfig/editmodel.json?rapidViewId={board.raw['id']}")
+        if 'quickFilterConfig' in cfg.raw:
+            return cfg.quickFilterConfig
+        return None
+
+    def fetch_issues_by_board_qf(self, board, issue_offset, max_issues, filter) -> list:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(board, str):
+            name = board
+            board = self.fetch_board_by_name(name)
+            if len(board) != 1:
+                raise ValueError(f"Invalid results for {name} - ambiguous?")
+            board = board[0]
+
+        fid = None
+        filts = self.fetch_quickfilters_by_board(board)
+        if not filts:
+            return []
+
+        for f in filts.quickFilters:
+            if f.name == filter:
+                fid = f.id
+
+        if not fid:
+            raise ValueError(f"Uknown query: {filter}")
+
+        # Now query issues by the most absurd interface:
+        resp = self.jira.find(f"../../greenhopper/1.0/xboard/work/allData.json?rapidViewId={board.raw['id']}&activeQuickFilters={fid}")
+
+        if 'issuesData' in resp.raw:
+            return resp.issuesData.issues
+
+        return []
