@@ -25,6 +25,19 @@ BOARD_DETAILS_MAP = {
 }
 
 
+def is_issue_assigned_to(issue, assignee):
+    return issue.fields.assignee and \
+        (issue.fields.assignee.name.lower() == assignee.lower() or
+         issue.fields.assignee.displayName.lower() == assignee.lower())
+
+
+def is_issue_in_column(issue, column_statuses, jobj):
+    return hasattr(issue, 'fields') and \
+        issue.fields.status in column_statuses or \
+        hasattr(issue, 'statusId') and \
+        jobj.get_status_detail(issue.statusId) in column_statuses
+
+
 @click.command(
     name="list"
 )
@@ -71,33 +84,24 @@ def show_cmd(boardname, assignee, project, filter, issue_offset, max_issues):
     jobj.login()
 
     columns = jobj.fetch_column_config_by_board(boardname)
-    ISSUE_HEADER = [k for k in columns]
-    issue_col_store = {k: [] for k in columns}
+    ISSUE_HEADER = [column for column in columns]
+    issue_col_store = {column: [] for column in columns}
 
-    if not filter:
-        issues = jobj.fetch_issues_by_board(boardname, issue_offset, max_issues)
+    if filter:
+        issues = jobj.fetch_issues_by_board_qf(boardname, issue_offset, max_issues, filter)
     else:
-        issues = jobj.fetch_issues_by_board_qf(boardname, issue_offset,
-                                               max_issues, filter)
+        issues = jobj.fetch_issues_by_board(boardname, issue_offset, max_issues)
 
     for issue in issues:
-        if assignee is not None:
-            if ((issue.raw['fields']['assignee'] is None) or
-                (('name' in issue.raw['fields']['assignee'] and
-                  issue.fields.assignee.name.lower() != assignee.lower()) and
-                 ('displayName' in issue.raw['fields']['assignee'] and
-                  issue.fields.assignee.displayName.lower() != assignee.lower()))):
-                continue
-        for k in columns:
-            if hasattr(issue, 'fields') and issue.fields.status in columns[k]:
-                issue_col_store[k].append(issue)
-            elif hasattr(issue, 'statusId'):
-                status_detail = jobj.get_status_detail(issue.statusId)
-                if status_detail in columns[k]:
-                    issue_col_store[k].append(issue.key)
+        if assignee and not is_issue_assigned_to(issue, assignee):
+            continue
+        for column in columns:
+            if is_issue_in_column(issue, columns[column], jobj):
+                issuestr = f"{issue.key}"
+                issue_col_store[column].append(issuestr)
 
-    final = tabulate(issue_col_store, ISSUE_HEADER, 'psql')
-    display_via_pager(final)
+    final_output = tabulate(issue_col_store, ISSUE_HEADER, 'psql')
+    display_via_pager(final_output)
 
 
 @click.command(name='get-config')
