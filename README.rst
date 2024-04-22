@@ -236,3 +236,45 @@ Setting the state can be done by::
 
   $ jcli issues set-status BUG-123 Post
   done.
+
+
+Interfacing with boards
+-----------------------
+
+Displaying a board
+------------------
+
+Displaying a board can be done by running the `boards show` command
+with the board name as an argument::
+
+  $ jcli boards show "My Board"
+  +-----------+------------+---------+---------------------+-----------------------+------------+
+  | Backlog   | Triage     | To Do   | In Progress (Dev)   | Code Review / On QA   | Done       |
+  |-----------+------------+---------+---------------------+-----------------------+------------|
+  |           | BUG-121    | BUG-22  | BUG-455             |                       | BUG-1      |
+  |           |            | BUG-23  |                     |                       | BUG-2      |
+  |           |            |         |                     |                       | BUG-3      |
+  |           |            |         |                     |                       | BUG-4      |
+  +-----------+------------+---------+---------------------+-----------------------+------------+
+
+In order to work with boards from the command line, it is important to
+know the column mappings for statuses, and the query that generates
+the boards.  This information can be retrieved by the `boards get-config`
+command to display the board column mappings, and queries::
+
+  $ jcli boards get-config "My Board"
+  {'column.Backlog', [<JIRA Status: name='Backlogged', id='12345'],
+  ...
+  quickfilter.name = "Only Me"
+  quickfilter.query = "assignee = currentUser()"
+  ...
+
+Additionally, the named *quickfilters* can be displayed and used when
+querying for board details::
+
+  $ jcli boards show "My Board" --filter "Only Me"
+  +-----------+------------+---------+---------------------+-----------------------+------------+
+  | Backlog   | Triage     | To Do   | In Progress (Dev)   | Code Review / On QA   | Done       |
+  |-----------+------------+---------+---------------------+-----------------------+------------|
+  +-----------+------------+---------+---------------------+-----------------------+------------+
+
