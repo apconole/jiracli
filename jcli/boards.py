@@ -5,6 +5,7 @@ import pprint
 from jcli import connector
 from jcli.utils import display_via_pager
 from jcli.utils import issue_eval
+from jcli.utils import trim_text
 
 from tabulate import tabulate
 
@@ -72,11 +73,13 @@ def list_cmd(limit):
               help="The name of the project (defaults to '')")
 @click.option("--filter", type=str, default=None,
               help="Applies a quick filter to the results (defaults to None)")
+@click.option("--summary-len", type=int, default=0,
+              help="Includes a summary of the length specified when set (defaults to 0, meaning no summary)")
 @click.option('--issue-offset', type=int, default=0,
               help="Sets the offset for pulling issues")
 @click.option('--max-issues', type=int, default=100,
               help="Sets the max number of issues to pull")
-def show_cmd(boardname, assignee, project, filter, issue_offset, max_issues):
+def show_cmd(boardname, assignee, project, filter, summary_len, issue_offset, max_issues):
     """
     Displays the board specified by 'name'
     """
@@ -98,6 +101,8 @@ def show_cmd(boardname, assignee, project, filter, issue_offset, max_issues):
         for column in columns:
             if is_issue_in_column(issue, columns[column], jobj):
                 issuestr = f"{issue.key}"
+                if summary_len:
+                    issuestr += f"\n{'-' * summary_len}\n{trim_text(issue.summary, summary_len)}\n{'_' * summary_len}"
                 issue_col_store[column].append(issuestr)
 
     final_output = tabulate(issue_col_store, ISSUE_HEADER, 'psql')
