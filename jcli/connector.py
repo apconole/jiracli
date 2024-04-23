@@ -243,7 +243,7 @@ class JiraConnector(object):
 
         issue_config = self.config['jira']['issues']
         for cfg in issue_config:
-            if 'field' in cfg and 'name' in cfg['field']:
+            if 'field' in cfg and cfg['field'] and 'name' in cfg['field']:
                 requested.append(cfg['field']['name'])
 
         return requested
