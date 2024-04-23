@@ -1,19 +1,60 @@
-v0.0.1 - 16 April 2024
------------------------
-    - Fixed issues with csv output (it didn't exist)
-    - Include 'status' field in the listing output
-    - Fixed an issue when adding comments where we could
-      accidentally add all whitespace as comment.
-    - Querying for issues first grabs the final states that
-      the JIRA server has configured, and then uses those to
-      check for closed issues, rather than hardcoded string.
-    - Added a command to output the final states so that future
-      query building can use them
-    - Added the option for interactive shell mode when click-shell
-      package is installed.
-    - Added state transitions.
-    - Bug fixes.
+CHANGES
+=======
 
-v0.0.1a - 12 April 2024
------------------------
-    - Initial development version
+* details: Add some basic server related information
+* test: Add a pytest infrastructure
+* connector: Handle cases of malformed 'field' entries in the yaml
+* boards: Include option to output summary
+* boards: Refactor the show
+* readme: Include a fix and better documentation
+* connector: Fix a bad flake
+* readme: Add documentation about the boards
+* authors: Include Eelco
+* boards: Add support for the quickfilter extensions
+* requirements: Move to click-8.1.4 minimum
+* authors: Update Chris' email, and move to the patch authors section
+* issues: add initial support for using csv input to update issues
+* connector: Support 'priority' field properly
+* github: Add a yaml to do a basic flake8 check
+* jcli: Update with flake8 fixes
+* docs: Remove the sphinx dependency
+* readme: Document the comment format
+* authors: Add Chris Van Hoof
+* authors: Add Flavio
+* issues: Use terminal width when showing an issue
+* utils: Strip CR on non-windows systems
+* issues: Add the 'mentions' option to shortcut checking comments
+* boards: Add a get-config to dump board details
+* boards: Fix up the assignee filter
+* issues: Display assignee instead of double project
+* readme: Try to fix the output
+* readme: Update with some usage documentation
+* authors: Add Vrinda and Lon
+* authors: Add Mark to the list
+* boards: Support listing JIRA boards
+* issues: Allow querying more issues
+* issues: Allow arbitrary matching fields
+* issues: Allow a '-' to indicate no assignee
+* connector: Look up custom fields
+* requirements: Add pyyaml requirement
+* boards: Start on dumping boards from JIRA
+* connector: Grab 100 results instead of 50
+* utils: Add a case-insensitive string replacement
+* connector: Allow assigning users
+* connector: Import datetime when converting fields
+* requirements: Set jira min version to 3.8
+* jcli: Update project changelog and version
+* shell: Add an interactive shell via click
+* issues: Include status
+* issues: Output in CSV form
+* issues: Improve comment handling
+* query: Make the builder more robust
+* status: Use the final status from the JIRA server
+* docs: Add some simple documentation
+* issues: Print descriptions when showing issues
+* issues: Add the ability to transition an issue
+* connector: Fix the field get when a field doesn't exist
+* connector: Fix the comment addition
+* issues: allow for setting fields
+* issues: Allow for custom fields to be included
+* Initial revision
