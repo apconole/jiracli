@@ -15,15 +15,19 @@ def trim_text(data, length=45) -> str:
 
 
 def fitted_blocks(data, length=75, fence=None) -> str:
+    eol = "\r\n" if os.name == 'nt' else "\n"
     if os.name != 'nt':
         data = data.replace('\r', '')
-    lines = data.split('\n')
-    output = ""
 
-    for line in lines:
+    output = ""
+    lfence = f"{fence} " if fence else ""
+    rfence = f" {fence}" if fence else ""
+
+    for line in data.split('\n'):
+        line = line.replace('\t', ' ' * 8)
         while len(line) > 0:
-            output += f"{fence} {line[:length]:<{length}} {fence}\n"
-            line = line[length:]  # Corrected slicing index
+            output += f"{lfence}{line[:length]:<{length}}{rfence}{eol}"
+            line = line[length:]
 
     return output
 
