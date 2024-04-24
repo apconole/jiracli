@@ -60,7 +60,7 @@ def list_cmd(limit):
         boards_out.append(board_details)
 
     out = tabulate(boards_out, BOARD_HEADER_MAP, 'psql')
-    display_via_pager(out)
+    display_via_pager(out, f"Jira Board List")
 
 
 @click.command(
@@ -106,7 +106,7 @@ def show_cmd(boardname, assignee, project, filter, summary_len, issue_offset, ma
                 issue_col_store[column].append(issuestr)
 
     final_output = tabulate(issue_col_store, ISSUE_HEADER, 'psql')
-    display_via_pager(final_output)
+    display_via_pager(final_output, f"Board: {boardname}")
 
 
 @click.command(name='get-config')

@@ -1,6 +1,7 @@
 """
 Utility stuff...
 """
+import click
 import codecs
 import os
 import re
@@ -80,12 +81,11 @@ def _display_via_pager(pager, output):
             break
 
 
-def display_via_pager(output):
-    pager = os.environ.get('PAGER')
-    if not pager:
-        pager = 'less'
+def display_via_pager(output, title=None):
+    if title:
+        click.echo(f"\033]0;{title}\007", nl=False)  # Set terminal title
 
-    _display_via_pager(pager, output)
+    _display_via_pager(os.environ.get('PAGER', 'less'), output)
 
 
 def get_text_via_editor() -> str:

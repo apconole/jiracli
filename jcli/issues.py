@@ -201,7 +201,7 @@ def show_cmd(issuekey, raw, width):
         output += fitted_blocks(comment.body, max_width - 4, "|")
         output += "+" + '-' * (max_width - 2) + "+\n"
 
-    display_via_pager(output)
+    display_via_pager(output, f"Issue: {issuekey}")
 
 
 @click.command(
