@@ -104,7 +104,7 @@ class JiraConnector(object):
         try:
             result = self.jira.myself()
         except JIRAError as e:
-            result = {'key': f"ERROR retrieving information {e}"}
+            result = {'key': f"ERROR retrieving information {e}", "name": f"Error: {e}"}
 
         return result['name']
 
