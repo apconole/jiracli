@@ -60,7 +60,7 @@ def list_cmd(limit):
         boards_out.append(board_details)
 
     out = tabulate(boards_out, BOARD_HEADER_MAP, 'psql')
-    display_via_pager(out, f"Jira Board List")
+    display_via_pager(out, "Jira Board List")
 
 
 @click.command(
