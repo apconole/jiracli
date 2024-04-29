@@ -88,10 +88,12 @@ def display_via_pager(output, title=None):
     _display_via_pager(os.environ.get('PAGER', 'less'), output)
 
 
-def get_text_via_editor() -> str:
+def get_text_via_editor(starting_text=None) -> str:
     text = ""
 
     with tempfile.NamedTemporaryFile(suffix=".tmp", delete=False) as temp_file:
+        if starting_text:
+            temp_file.write(bytes(starting_text, "utf-8"))
         temp_file.close()  # Close the file so it can be opened by the text editor
 
         # Launch the default text editor for the user to write the comment
