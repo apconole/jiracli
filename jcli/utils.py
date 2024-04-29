@@ -111,3 +111,11 @@ def get_text_via_editor(starting_text=None) -> str:
 
 def ireplace(old, new, text):
     return re.sub('(?i)' + re.escape(old), lambda m: new, text)
+
+
+def str_containing(string, lst) -> bool:
+    return any(check in string for check in lst)
+
+
+def str_contained(string, lst) -> bool:
+    return any(string in check for check in lst)
