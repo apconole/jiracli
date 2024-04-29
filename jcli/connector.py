@@ -592,3 +592,31 @@ class JiraConnector(object):
             return resp.issuesData.issues
 
         return []
+
+    def _proj_key(self, proj):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        prjs = self.jira.projects()
+        matching = [prj for prj in prjs
+                    if prj.name == proj or prj.key == proj]
+
+        if len(matching) > 1:
+            raise ValueError(f"Unable to disambiguate {proj} => {matching}")
+        if len(matching) == 0:
+            raise ValueError(f"Uknown project: {proj}")
+
+        return matching[0].key
+
+    def create_issue(self, issue_dict):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if 'project' not in issue_dict or 'issuetype' not in issue_dict:
+            # this is an input error
+            raise ValueError("Issue needs 'project' and 'issuetype'.")
+
+        orig_project = issue_dict['project']
+        issue_dict['project'] = self._proj_key(orig_project)
+
+        return self.jira.create_issue(issue_dict)
