@@ -2,6 +2,7 @@ import click
 import csv
 import logging
 import pprint
+import re
 import shutil
 import sys
 
@@ -10,6 +11,8 @@ from jcli.utils import display_via_pager
 from jcli.utils import fitted_blocks
 from jcli.utils import get_text_via_editor
 from jcli.utils import issue_eval
+from jcli.utils import str_containing
+from jcli.utils import str_contained
 from jcli.utils import trim_text
 from tabulate import tabulate
 
@@ -315,3 +318,180 @@ def set_field_from_csv_cmd(csvfile):
             new = jobj.get_field(issue, fieldname)
 
             click.echo(f"Updated {issuekey}, set {fieldname}: {old} -> {new}")
+
+
+def issue_extract_blocks(issue_block):
+    parse_as_git = False
+
+    # Split the text into blocks separated by blank lines
+    if issue_block.startswith("From ") and "\n---\n" in issue_block:
+        parse_as_git = True
+
+    lines = issue_block.split('\n')
+
+    # Initialize variables to store summary, description, and comments, and
+    # track the git sections
+    summary = ''
+    description = ''
+    comments = []
+    git_state = 0
+
+    # Flag to indicate whether we are currently parsing the summary or description
+    parsing_summary = True
+
+    # Iterate over each line
+    for line in lines:
+        line = line.strip()
+
+        # Skip empty lines
+        # Check if we move on to description
+        if not line.strip() and parsing_summary:
+            parsing_summary = False
+            continue
+
+        # If git parsing - check for the subject line, and handle
+        # overcontinuation
+        if parse_as_git:
+            if git_state == 0:
+                if line.startswith("Subject:"):
+                    pos = line.find("]")
+                    line = line[pos + 1:]
+                    git_state = 1
+                    summary += line
+                # ignore lines until 'Subject'
+                continue
+
+            if git_state == 1:
+                if line.startswith("Date") or line.startswith("Message") or \
+                   line.startswith("MIME") or line.startswith("List-") or \
+                   line.startswith("X-") or line.startswith("In-Reply") or \
+                   line.startswith("References") or \
+                   line.startswith("Precedence"):
+                    continue
+
+                if not parsing_summary:
+                    # we move the git-state along
+                    # but let it process as normal through the rest of the
+                    # machine.
+                    git_state = 2
+                else:
+                    summary += line.lstrip()
+
+            # detect the cutline, and switch to flag the 'diff' as the final
+            # parse
+            if git_state == 2 and line == "---":
+                git_state = 3
+                continue
+
+            if git_state == 3:
+                if line.startswith("diff --git") or \
+                   str_containing(line, ["|", "changed", "created mode"]):
+                    break
+
+        # accumulate comments
+        if line.startswith('#'):
+            comments.append(line)
+            continue
+
+        if parsing_summary:
+            summary += line
+        else:
+            description += line + '\n'
+
+    summary = summary.strip()
+    description = description.strip()
+    return summary, description, comments
+
+
+@click.command(
+    name='create'
+)
+@click.option("--summary", type=str, default=None,
+              help="The summary for the issue.  Default is to use the text editor interpretation.")
+@click.option("--description", type=str, default=None,
+              help="Description of the issue.  Default is to use the text editor interpretation.")
+@click.option("--project", type=str, default=None,
+              help="The project to open.  Default is to use the text editor interpretation.")
+@click.option("--issue-type",
+              type=click.Choice(["Epic", "Bug", "Story", "Task", "Subtask"],
+                                case_sensitive=False),
+              default='bug',
+              help="Specific issue type.  Defaults to 'bug'.")
+@click.option("--set-field", multiple=True, nargs=2,
+              help="Sets a specific field.", default=None)
+@click.option("--from-file", type=click.Path(exists=True),
+              help="Uses a file (like a git patchfile).", default=None)
+@click.option("--verbose", is_flag=True, default=False,
+              help="Will print the issue details being added.  Ignored with '--dry-run'.")
+@click.option("--dry-run", is_flag=True, default=False,
+              help="Do not actually commit the issue.")
+def create_issue_cmd(summary, description, project, issue_type, set_field,
+                     from_file, verbose, dry_run):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    filled_all = all((summary, description, project))
+    special_lines = None
+
+    if from_file:
+        with open(from_file, "r") as f:
+            # We want to ensure that we always let the user edit the final
+            # issue text before submitting it.
+            filled_all = False
+
+            summary, description, comments = issue_extract_blocks(f.read())
+            if str_contained("# set-project: ", comments):
+                special_lines = "\n".join(comments)
+                for c in comments:
+                    if c.startswith("# set-project: ") and not project:
+                        project = c[15:]
+    else:
+        summary = summary or "# The first line in this will be treated as the summary."
+        description = description or (
+            "# Add your description here.  By default, all lines\n"
+            "# starting with a '#' are used to denote special lines")
+
+    project = project or jobj.get_default_str('project', "Default Project")
+
+    if not special_lines:
+        special_lines = (f"# set-project: {project}\n" +
+                         f"# issue-type: {issue_type}\n"
+                         "# NOTE: you can use a line '# set-field: \"foo\" bar' to set field 'foo'\n"
+                         "#       to value 'bar'.  The 'set-field' directive requires\n"
+                         "#       field to be quoted as \"Some Foo\".")
+
+    template_data = f"{summary}\n\n{description}\n\n{special_lines}"
+
+    if not filled_all:
+        issue_patch = get_text_via_editor(template_data)
+
+        if issue_patch == template_data and not from_file:
+            click.echo("Issue text not set.  Please fill in project, summary, and description.")
+            sys.exit(1)
+    else:
+        issue_patch = template_data
+
+    # process the results.
+    issue = {}
+
+    issue["summary"], issue["description"], comments = issue_extract_blocks(issue_patch)
+
+    for c in comments:
+        if c.startswith("# set-field:"):
+            m = re.match(r'# set-field: "(.*)" (.*)', c)
+            if m:
+                f, v = m.groups()
+                f = jobj._try_fieldname(f)
+                v = jobj.convert_to_field_type(f, v)
+                issue[f] = v
+        elif c.startswith("# set-project: "):
+            project = c[15:]
+        elif c.startswith("# issue-type: "):
+            issue_type = c[14:]
+
+    issue["project"] = project
+    issue["issuetype"] = issue_type
+    if dry_run or verbose:
+        click.echo(f"Creating: {pprint.pformat(issue)}")
+    result = "DRY-OKAY" if dry_run else jobj.create_issue(issue)
+    click.echo(f"done - Result: {result}.")
