@@ -241,6 +241,103 @@ Setting the state can be done by::
   $ jcli issues set-status BUG-123 Post
   done.
 
+Reporting Issues in JIRA
+------------------------
+
+To test out filing a JIRA ticket, simply run::
+
+  $ jcli issues create --dry-run
+
+This will spawn an editor taking in issue text in the following fashion::
+
+  This first block is the issue summary.
+
+  Now add a bit of detailed description about the issue, including
+  when it was observed, and what was seen.  Formatting options are valid
+  here such as:
+  {code:java}
+     some_code();
+     another_result = code_result();
+  {code}
+
+  And links to [searches|https://google.com].
+  # This is a comment, and will not be added to the bug.
+  # The following comments will be needed - they can live anywhere in
+  # the description of the issue:
+  # set-project: A Project Name
+  # issue-type: Bug
+
+In the above, when creating the issue, the first block of text will be
+treated as the summary.  The issue parsing block will try to zap line-breaks
+for the summary.  Line breaks for the description will be preserved.
+Additionally, the comment blocks must include the `set-project:` and
+`issue-type:` directives.  Make sure to use the appropriate issue type for
+the project.  Finally, if you have specific fields you wish to set, those
+can appear as additional `set-field:` blocks::
+
+  # set-field: "Story Points" 1.0
+
+This will tell the issue creation code to include a field setter for the
+*"Story Points"* field and set it to value *1.0*.  NOTE: This only works
+if the project is configured to use this field.
+
+The issue creation code can also take all text from a file.  This is useful
+when running with the dry-run flag, to check that all the fields have
+appropriate settings.  The creation code will show what it will propose as
+as issue like::
+
+  Creating: {'description': 'Now add a bit of detailed description about the issue, including\n'
+                  'when it was observed, and what was seen.  Formatting options are valid\n'
+                  'here such as:\n'
+                  '{code:java}\n'
+                  '\n'
+                  '   some_code();\n'
+                  '   another_result = code_result();\n'
+                  '{code}\n'
+                  '\n'
+                  '\n'
+                  'And links to [searches|https://google.com].',
+             'issuetype': 'Bug',
+             'project': 'A Project Name',
+             'summary': "This first block is the issue summary."}
+  done - Result: DRY-OKAY
+
+Once this is satisfactory, removing the dry-run flag will commit the issue
+to the JIRA server.
+
+Additionally, the issue parser will try to parse a patch file into a
+formatted issue.  This can be useful when working with cover-letters or
+for maintainers who wish to create tickets based on upstream accepted
+bugfixes.
+
+Finally, we can construct useful backport tickets by using the `--commit`
+and even `--oneline` options to make useful backport related tickets::
+
+  $ pwd
+  /home/user/git/linux
+  $ jcli issues create --project "Kernel Project" --issue-type Epic \
+    --oneline --commit HEAD..HEAD~3
+
+This will pop up an editor with contents like::
+
+  # The first line in this will be treated as the summary.
+
+  # The following commits will be referenced in the ticket
+     9664d505853dc net: openvswitch: Debugging stuff
+     42d43269220b2 net: openvswitch: kselftest rebase
+     c4732113ade45 selftests: openvswitch: rework ovs-dpctl.py with something
+
+  # set-project: Kernel Project
+  # issue-type: Epic
+  # NOTE: you can use a line '# set-field: "foo" bar' to set field 'foo'
+  #       to value 'bar'.  The 'set-field' directive requires
+  #       field to be quoted as "Some Foo"
+
+You'll need to edit this and set the summary, and fill out the description
+to get a valid issue created.  It is recommended to save a copy of the text
+and use the `--dry-run` option to make sure you are confident in the issue
+text, and only then run without `--dry-run`.
+
 
 Interfacing with boards
 -----------------------
