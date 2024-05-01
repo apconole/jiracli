@@ -196,7 +196,17 @@ def show_cmd(issuekey, raw, width):
 
     output += f"+ Comments: {' ' * (max_width - 14)} |\n"
     for comment in issue.fields.comment.comments:
-        output += f"| Author: {comment.author.displayName:<36} | {comment.created:<20} |\n"
+        if max_width < 80:
+            output += f"| Author: {comment.author.displayName:<14} [~{comment.author.name:<18}] | {comment.created:<20} |\n"
+        else:
+            add_ln = f"| Author: {comment.author.displayName:<20} [~{comment.author.name:<20}] | {comment.id:<18} | {comment.created:<20}"
+            if len(add_ln) > max_width:
+                add_ln += "\n"
+            else:
+                diff = max_width - (len(add_ln) + 1)
+                add_ln += " " * diff
+                add_ln += "|\n"
+            output += add_ln
         output += f"|{'-' * (max_width - 2)}|\n"
         output += fitted_blocks(comment.body, max_width - 4, "|")
         output += "+" + '-' * (max_width - 2) + "+\n"
