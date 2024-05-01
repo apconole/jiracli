@@ -97,6 +97,13 @@ class JiraConnector(object):
                     sprint_field = issue['name']
         return sprint_field
 
+    def get_default_str(self, key, default="") -> str:
+        if 'default' not in self.config['jira'] or \
+           key not in self.config['jira']['default']:
+            return default
+
+        return self.config['jira']['default'][key]
+
     def myself(self):
         if self.jira is None:
             raise RuntimeError("Need to log-in first")
