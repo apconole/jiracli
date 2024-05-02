@@ -10,6 +10,8 @@ from jcli import connector
 from jcli.utils import display_via_pager
 from jcli.utils import fitted_blocks
 from jcli.utils import get_text_via_editor
+from jcli.utils import git_get_commit_oneline
+from jcli.utils import git_get_commit_formatted
 from jcli.utils import issue_eval
 from jcli.utils import str_containing
 from jcli.utils import str_contained
@@ -341,6 +343,8 @@ def issue_extract_blocks(issue_block):
 
     # Iterate over each line
     for line in lines:
+        tabbed = True if line.startswith("\t") else False
+
         line = line.strip()
 
         # Skip empty lines
@@ -362,20 +366,19 @@ def issue_extract_blocks(issue_block):
                 continue
 
             if git_state == 1:
-                if line.startswith("Date") or line.startswith("Message") or \
-                   line.startswith("MIME") or line.startswith("List-") or \
-                   line.startswith("X-") or line.startswith("In-Reply") or \
-                   line.startswith("References") or \
-                   line.startswith("Precedence"):
-                    continue
-
                 if not parsing_summary:
                     # we move the git-state along
                     # but let it process as normal through the rest of the
                     # machine.
                     git_state = 2
                 else:
-                    summary += line.lstrip()
+                    if not tabbed:
+                        continue
+
+                    summary += " " + line.lstrip()
+                    # this needs to be here to skip double add later
+                    # due to the git detection code being here.
+                    continue
 
             # detect the cutline, and switch to flag the 'diff' as the final
             # parse
@@ -421,6 +424,10 @@ def issue_extract_blocks(issue_block):
               help="Sets a specific field.", default=None)
 @click.option("--from-file", type=click.Path(exists=True),
               help="Uses a file (like a git patchfile).", default=None)
+@click.option("--commit", multiple=True, type=str, default=None,
+              help="Create an issue that will reference multiple commits.")
+@click.option("--oneline", is_flag=True, default=False,
+              help="When specifying a single commit, force the one-line version.")
 @click.option("--verbose", is_flag=True, default=False,
               help="Will print the issue details being added.  Ignored with '--dry-run'.")
 @click.option("--show-fields", is_flag=True, default=False,
@@ -429,12 +436,30 @@ def issue_extract_blocks(issue_block):
 @click.option("--dry-run", is_flag=True, default=False,
               help="Do not actually commit the issue.")
 def create_issue_cmd(summary, description, project, issue_type, set_field,
-                     from_file, verbose, show_fields, dry_run):
+                     from_file, commit, oneline, verbose, show_fields, dry_run):
     jobj = connector.JiraConnector()
     jobj.login()
 
     filled_all = all((summary, description, project))
     special_lines = None
+
+    if commit:
+        if len(commit) == 1 and not oneline:
+            # treat this as a from-file with a specific commit.
+            as_email = git_get_commit_formatted(commit[0])
+            summary, description, comments = issue_extract_blocks(as_email)
+        else:
+            description = "# The following commits will be referenced in the ticket:\n"
+            for sha in commit:
+                commit_line = git_get_commit_oneline(sha)
+                if not commit_line or not len(commit_line):
+                    click.echo(f"ERROR: Unable to find {sha}")
+                    click.echo("Please make sure you are in a git tree, or GIT_DIR is defined.")
+                    sys.exit(1)
+                commit_lines = commit_line.split("\n")
+                for commit_line in commit_lines:
+                    if len(commit_line):
+                        description += f"   {commit_line}\n"
 
     if from_file:
         with open(from_file, "r") as f:
@@ -474,7 +499,8 @@ def create_issue_cmd(summary, description, project, issue_type, set_field,
     if not filled_all:
         issue_patch = get_text_via_editor(template_data)
 
-        if issue_patch == template_data and not from_file:
+        if issue_patch == template_data and not (from_file or
+                                                 (commit and not oneline)):
             click.echo("Issue text not set.  Please fill in project, summary, and description.")
             sys.exit(1)
     else:

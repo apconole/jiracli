@@ -119,3 +119,31 @@ def str_containing(string, lst) -> bool:
 
 def str_contained(string, lst) -> bool:
     return any(string in check for check in lst)
+
+
+def git_get_commit_oneline(shasum) -> str:
+    cmd = ['git', 'log']
+    if "..." not in shasum and ".." not in shasum:
+        cmd.append('-n')
+        cmd.append('1')
+    cmd.append('--oneline')
+    cmd.append(shasum)
+
+    try:
+        o = subprocess.run(cmd, capture_output=True)
+    except subprocess.CalledProcessError:
+        return None
+
+    return o.stdout.decode('utf-8')
+
+
+def git_get_commit_formatted(shasum) -> str:
+    cmd = ['git', 'format-patch', '-1', '--stdout']
+    cmd.append(shasum)
+
+    try:
+        o = subprocess.run(cmd, capture_output=True)
+    except subprocess.CalledProcessError:
+        return None
+
+    return o.stdout.decode('utf-8')
