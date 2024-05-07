@@ -379,16 +379,18 @@ class JiraConnector(object):
 
     def convert_to_field_type(self, field_id, field_value):
         """Convert the field value to the appropriate type."""
-        if not hasattr(self, '_field_type_mapping'):
-            # Get field type mapping from Jira if not cached
-            self._field_type_mapping = self._fetch_field_type_mapping()
 
-        field_type = self._field_type_mapping.get(field_id)
+        field_type = self._fetch_field_type_mapping().get(field_id)
         if field_type is None:
             raise ValueError(f"Field type for field with ID '{field_id}' not found.")
 
         if field_type == "string":
             return field_value
+        elif field_type == "user":
+            n = self.find_users_for_name(field_value)
+            if len(n) != 1:
+                raise ValueError(f"Unable to convert \"{field_value}\" to unambiguous name - {len(n)} results.")
+            return {'name': n[0].name}
         elif field_type == "number":
             return float(field_value)
         elif field_type == "date":
@@ -397,14 +399,20 @@ class JiraConnector(object):
 
     def _fetch_field_type_mapping(self):
         """Fetch field type mapping from Jira."""
+        if hasattr(self, '_field_type_mapping'):
+            # Get field type mapping from Jira if not cached
+            return self._field_type_mapping
+
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
         custom_fields = self.jira.fields()
         field_type_mapping = {field['id']: field['schema']['type']
                               for field in custom_fields if field['custom']}
+        field_type_mapping["assignee"] = "user"
 
-        return field_type_mapping
+        self._field_type_mapping = field_type_mapping
+        return self._field_type_mapping
 
     def _last_states_list(self) -> list:
         """Try to get all the final states"""
