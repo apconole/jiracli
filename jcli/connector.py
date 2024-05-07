@@ -621,7 +621,7 @@ class JiraConnector(object):
                 fid = f.id
 
         if not fid:
-            raise ValueError(f"Uknown query: {filter}")
+            raise ValueError(f"Unknown query: {filter}")
 
         # Now query issues by the most absurd interface:
         resp = self.jira.find(f"../../greenhopper/1.0/xboard/work/allData.json?rapidViewId={board.raw['id']}&activeQuickFilters={fid}")

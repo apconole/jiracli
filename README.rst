@@ -100,10 +100,10 @@ The view can be tuned with a specific jql by using the `--jql` option::
 
 Additionally, the different contains and match options can help to build a
 JQL query (`--matching-eq`, `--matching-neq`, `--matching-contains`,
-`--matching-not`, `--matching-in`) for finer tuned queries to list isues.
+`--matching-not`, `--matching-in`) for finer tuned queries to list issues.
 
 As an example, let's say we want to find all the issues for which the custom
-field "Reponse Needed" had the users A or B set::
+field "Response Needed" had the users A or B set::
 
   $ jcli issues list --assignee=- \
     --matching-in "\"Response Needed\"" "(\"$(jcli myself)\", \"b@b.com\")"
