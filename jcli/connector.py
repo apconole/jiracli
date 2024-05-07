@@ -355,6 +355,29 @@ class JiraConnector(object):
         except:
             raise ValueError(f"Unable to handle {type(var_instance)}")
 
+    def _proj_key(self, project):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        projects = [p for p in self.jira.projects()
+                    if p.name == project or p.key == project]
+        if len(projects) != 1:
+            raise ValueError(f"Unable to determine a project by {project}.")
+        return projects[0].key
+
+    def get_project_default_types(self, project, issue_type):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        project = self._proj_key(project)
+        if isinstance(issue_type, str):
+            try:
+                issue_type = self.jira.issue_type_by_name(issue_type)
+            except jira.exceptions.JIRAError:
+                raise ValueError(f"Couldn't determine issue type for \"{issue_type}\"")
+        full_fields = self.jira.project_issue_fields(project, issue_type.id)
+        return [f.name for f in full_fields]
+
     def set_field(self, issue, fieldname, val):
         """Set the field for an issue to a particular value."""
         if self.jira is None:

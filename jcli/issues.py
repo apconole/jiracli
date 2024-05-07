@@ -423,10 +423,13 @@ def issue_extract_blocks(issue_block):
               help="Uses a file (like a git patchfile).", default=None)
 @click.option("--verbose", is_flag=True, default=False,
               help="Will print the issue details being added.  Ignored with '--dry-run'.")
+@click.option("--show-fields", is_flag=True, default=False,
+              help="Will include the fields that can be set for the project and"
+              " issue type.  Must specify valid values for both on the command line.")
 @click.option("--dry-run", is_flag=True, default=False,
               help="Do not actually commit the issue.")
 def create_issue_cmd(summary, description, project, issue_type, set_field,
-                     from_file, verbose, dry_run):
+                     from_file, verbose, show_fields, dry_run):
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -454,12 +457,18 @@ def create_issue_cmd(summary, description, project, issue_type, set_field,
     project = project or jobj.get_default_str('project', "Default Project")
 
     if not special_lines:
-        special_lines = (f"# set-project: {project}\n" +
+        special_lines = (f"# set-project: {project}\n"
                          f"# issue-type: {issue_type}\n"
                          "# NOTE: you can use a line '# set-field: \"foo\" bar' to set field 'foo'\n"
                          "#       to value 'bar'.  The 'set-field' directive requires\n"
                          "#       field to be quoted as \"Some Foo\".")
 
+    if project != "Default Project" and show_fields:
+        # Try to pull the default fields for project and bug type
+        special_lines += "# Assignable fields below:\n"
+
+        for f in jobj.get_project_default_types(project, issue_type):
+            special_lines += f"## set-field: \"{f}\" value\n"
     template_data = f"{summary}\n\n{description}\n\n{special_lines}"
 
     if not filled_all:
