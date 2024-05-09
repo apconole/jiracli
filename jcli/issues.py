@@ -308,18 +308,24 @@ def set_field_from_csv_cmd(csvfile):
                 click.echo(f"Skipping invalid row: {row}")
                 continue
 
-            issuekey, fieldname, fieldvalue = row[0], row[1], row[2]
+            issuekey = row[0]
+            fvp = row[1:]
+
             issue = jobj.get_issue(issuekey)
 
             if issue is None:
-                click.echo(f"Error: {issuekey} not found.")
+                click.echo(f"Error: {issuekey} not found - skipping row.")
                 continue
 
-            old = jobj.get_field(issue, fieldname)
-            jobj.set_field(issue, fieldname, fieldvalue)
-            new = jobj.get_field(issue, fieldname)
+            # iterate through fieldname, fieldvalue pairs in the remaining elements of the row
+            for i in range(0, len(fvp), 2):
+                fieldname = fvp[i]
+                fieldvalue = fvp[i + 1]
 
-            click.echo(f"Updated {issuekey}, set {fieldname}: {old} -> {new}")
+                old = jobj.get_field(issue, fieldname)
+                jobj.set_field(issue, fieldname, fieldvalue)
+                new = jobj.get_field(issue, fieldname)
+                click.echo(f"Updated {issuekey}, set {fieldname}: {old} -> {new}")
 
 
 def issue_extract_blocks(issue_block):
