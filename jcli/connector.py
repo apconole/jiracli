@@ -630,3 +630,19 @@ class JiraConnector(object):
             return resp.issuesData.issues
 
         return []
+
+    def _find_users(self, searchTerm):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        return [{'displayName': n.displayName, 'key': n.key, 'name': n.name}
+                for n in self.jira.search_users(user=searchTerm)]
+
+    def find_users_by_name(self, named):
+        return self._find_users(named)
+
+    def find_users_by_username(self, named):
+        return self._find_users(named)
+
+    def find_users_by_email(self, named):
+        return self._find_users(named)
