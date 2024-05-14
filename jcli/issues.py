@@ -448,6 +448,8 @@ def create_issue_cmd(summary, description, project, issue_type, set_field,
 
     filled_all = all((summary, description, project))
     special_lines = None
+    fields = {}
+    set_field = set_field or []
 
     if commit:
         if len(commit) == 1 and not oneline:
@@ -499,7 +501,18 @@ def create_issue_cmd(summary, description, project, issue_type, set_field,
         special_lines += "# Assignable fields below:\n"
 
         for f in jobj.get_project_default_types(project, issue_type):
-            special_lines += f"## set-field: \"{f}\" value\n"
+            f = '"' + f + '"'
+            fields[f] = "value"
+
+    for f in set_field:
+        field = f[0]
+        if not field.startswith('"'):
+            field = '"' + f[0] + '"'
+        special_lines += f"# set-field: {field} {f[1]}\n"
+
+    for k, v in fields.items():
+        special_lines += f"## set-field: {k} {v}\n"
+
     template_data = f"{summary}\n\n{description}\n\n{special_lines}"
 
     if not filled_all:
