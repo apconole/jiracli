@@ -631,6 +631,12 @@ class JiraConnector(object):
 
         return []
 
+    def create_issue(self, issue_dict):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        return self.jira.create_issue(issue_dict)
+
     def _find_users(self, searchTerm):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
