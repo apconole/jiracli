@@ -289,6 +289,12 @@ class JiraConnector(object):
             else:
                 if 'name' in issue.raw['fields'][fieldname]:
                     return issue.raw['fields'][fieldname]['name']
+                if isinstance(issue.raw['fields'][fieldname], list):
+                    results = []
+                    for sf in issue.raw['fields'][fieldname]:
+                        if 'name' in sf:
+                            results.append(f"{sf['name']}")
+                    return ",".join(results)
                 return "(undecoded)"
 
         fields = self._fetch_custom_fields()
@@ -348,6 +354,9 @@ class JiraConnector(object):
 
         if isinstance(var_instance, jira.resources.Priority):
             return {"name": value}
+
+        if isinstance(var_instance, list):
+            return [{"name": value}]
 
         try:
             if 'name' in var_instance:
@@ -418,6 +427,8 @@ class JiraConnector(object):
             return float(field_value)
         elif field_type == "date":
             return datetime.strptime(field_value, "%Y-%m-%d").date()
+        elif field_type == "array":
+            return [field_value]
         # Add more conversions for other field types as needed
 
     def _fetch_field_type_mapping(self):
