@@ -31,3 +31,28 @@ def server_info_cmd():
     server_info = jobj.jira.server_info()
 
     click.echo(pprint.pformat(server_info))
+
+
+@click.command(
+    name="groups"
+)
+def groups_info_cmd():
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    grps = jobj._groups()
+
+    click.echo(pprint.pformat(grps))
+
+
+@click.command(
+    name="components"
+)
+@click.argument("project")
+def components_info_cmd(project):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    comps = [{'name': x.name, 'id': x.id} for x in jobj._components(project)]
+
+    click.echo(pprint.pformat(comps))

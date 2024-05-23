@@ -663,3 +663,15 @@ class JiraConnector(object):
 
     def find_users_by_email(self, named):
         return self._find_users(named)
+
+    def _groups(self):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        return self.jira.groups()
+
+    def _components(self, project):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        return self.jira.project(project).components

@@ -76,6 +76,8 @@ issues.add_command(issues_cmds.create_issue_cmd)
 details.add_command(details_cmds.last_states_cmd)
 details.add_command(details_cmds.server_info_cmd)
 details.add_command(details_cmds.statuses_cmd)
+details.add_command(details_cmds.groups_info_cmd)
+details.add_command(details_cmds.components_info_cmd)
 
 boards.add_command(boards_cmds.list_cmd)
 boards.add_command(boards_cmds.show_cmd)
