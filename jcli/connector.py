@@ -6,6 +6,7 @@ from jira.exceptions import JIRAError
 import jira
 import os
 import pathlib
+import types
 import yaml
 
 
@@ -398,7 +399,11 @@ class JiraConnector(object):
         issue_dict = {}
         if fieldname in issue.raw['fields']:
             f = eval(f"issue.fields.{fieldname}")
-            val = self.convert_to_jira_type(f, val)
+            if not isinstance(f, types.NoneType):
+                val = self.convert_to_jira_type(f, val)
+            else:
+                if fieldname == "assignee":
+                    val = {"name": val}
             issue_dict = {fieldname: val}
 
         fields = self._fetch_custom_fields()
