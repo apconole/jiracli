@@ -176,6 +176,7 @@ class JiraConnector(object):
 
         if issue is not None:
             self.jira.add_comment(issue, comment_body)
+
     def _order_by_from_string(self, order_by_string) -> str:
         orders = [("none", ""),
                   ("prio-asc", "priority asc"),
