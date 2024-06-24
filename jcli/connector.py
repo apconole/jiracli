@@ -243,7 +243,7 @@ class JiraConnector(object):
 
         def additional_args(query_parts, fields) -> list:
             if fields:
-                for field, m in fields_dict.items():
+                for field, m in fields.items():
                     # need to check for field being custom.
                     if field == "ORDER BY":
                         continue
