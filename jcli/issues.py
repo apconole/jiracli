@@ -63,11 +63,21 @@ ISSUE_DETAILS_MAP = {
               help="Sets the offset for pulling issues")
 @click.option('--max-issues', type=int, default=100,
               help="Sets the max number of issues to pull")
+@click.option('--sort',
+              type=click.Choice(["prio-asc", "prio-desc",
+                                 "type-asc", "type-desc",
+                                 "created-asc", "created-desc",
+                                 "duedate-asc", "duedate-desc",
+                                 "status-asc", "status-desc",
+                                 "project-asc", "project-desc",
+                                 "none"],
+                                case_sensitive=False),
+              default="none", help="Sort the output")
 def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
              matching_neq, matching_contains, matching_not,
              matching_in, matching_gt, matching_lt, matching_ge, matching_le,
              mentions, updated_since,
-             issue_offset, max_issues) -> None:
+             issue_offset, max_issues, sort) -> None:
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -93,6 +103,9 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
             qd["comment"] = ("~", "currentUser()")
         if updated_since:
             qd["updatedDate"] = (">=", updated_since)
+
+        if sort != "none":
+            qd["ORDER BY"] = jobj.order_by_from_string(sort)
 
         issues_query = jobj.build_issues_query(assignee, project, closed,
                                                fields_dict=qd)

@@ -176,6 +176,36 @@ class JiraConnector(object):
 
         if issue is not None:
             self.jira.add_comment(issue, comment_body)
+    def _order_by_from_string(self, order_by_string) -> str:
+        orders = [("none", ""),
+                  ("prio-asc", "priority asc"),
+                  ("prio-desc", "priority desc")]
+        if not order_by_string:
+            order_by_string = "none"
+
+        for t in orders:
+            if t[0] == order_by_string:
+                return t[1]
+
+        if "-" not in order_by_string and " " not in order_by_string:
+            raise ValueError(f"Invalid order string '{order_by_string}'")
+
+        if " " in order_by_string:
+            return order_by_string
+
+        lr = order_by_string.split("-")
+        return f"{lr[0]} {lr[1]}"
+
+    def order_by_from_string(self, order_by_string) -> str:
+        orders = self._order_by_from_string(order_by_string)
+
+        if orders != "":
+            if "ORDER BY" not in orders:
+                return f" ORDER BY {orders}"
+            else:
+                return f" {orders}"
+
+        return ""
 
     def build_issues_query(self, assignee=None, project=None, closed=None,
                            fields_dict=None, **kwargs):
@@ -215,6 +245,8 @@ class JiraConnector(object):
             if fields:
                 for field, m in fields_dict.items():
                     # need to check for field being custom.
+                    if field == "ORDER BY":
+                        continue
                     field = self._try_fieldname(field)
                     oper = "="
                     v = m
@@ -224,10 +256,21 @@ class JiraConnector(object):
                     query_parts.append(f'{field} {oper} {v}')
             return query_parts
 
+        def order_by_find(connector, fields) -> str:
+            if fields:
+                for field, m in fields.items():
+                    if field == "ORDER BY":
+                        return connector.order_by_from_string(m)
+
+            return ""
+
         query_parts = additional_args(query_parts, fields_dict)
         query_parts = additional_args(query_parts, kwargs)
 
-        return " AND ".join(query_parts)
+        order_by = order_by_find(self, fields_dict)
+        order_by = order_by if order_by != "" else order_by_find(self, kwargs)
+
+        return " AND ".join(query_parts) + order_by
 
     def _fetch_custom_fields(self) -> dict:
         if self.jira is None:
