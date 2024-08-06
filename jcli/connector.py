@@ -564,9 +564,18 @@ class JiraConnector(object):
         if isinstance(board, str):
             name = board
             board = self.fetch_board_by_name(name)
+            found = None
             if len(board) != 1:
+                # cycle through and see if there is a real result with this name
+                for b in board:
+                    if b.name == name:
+                        found = b
+            else:
+                found = board[0]
+
+            if not found:
                 raise ValueError(f"Invalid results for {name} - ambiguous?")
-            board = board[0]
+            board = found
 
         try:
             sprints = self.jira.sprints(board.raw['id'])
@@ -583,9 +592,18 @@ class JiraConnector(object):
         if isinstance(board, str):
             name = board
             board = self.fetch_board_by_name(name)
+            found = None
             if len(board) != 1:
+                # cycle through and see if there is a real result with this name
+                for b in board:
+                    if b.name == name:
+                        found = b
+            else:
+                found = board[0]
+
+            if not found:
                 raise ValueError(f"Invalid results for {name} - ambiguous?")
-            board = board[0]
+            board = found
 
         # Got the board ID - let's get the REST details
         # Don't look at this too long .. it will make you sad.
@@ -648,9 +666,18 @@ class JiraConnector(object):
         if isinstance(board, str):
             name = board
             board = self.fetch_board_by_name(name)
+            found = None
             if len(board) != 1:
+                # cycle through and see if there is a real result with this name
+                for b in board:
+                    if b.name == name:
+                        found = b
+            else:
+                found = board[0]
+
+            if not found:
                 raise ValueError(f"Invalid results for {name} - ambiguous?")
-            board = board[0]
+            board = found
 
         # Boards are a total hack, and this is also sad.
         # Rather than a direct link somewhere to quickfilters, we need to
@@ -667,9 +694,18 @@ class JiraConnector(object):
         if isinstance(board, str):
             name = board
             board = self.fetch_board_by_name(name)
+            found = None
             if len(board) != 1:
+                # cycle through and see if there is a real result with this name
+                for b in board:
+                    if b.name == name:
+                        found = b
+            else:
+                found = board[0]
+
+            if not found:
                 raise ValueError(f"Invalid results for {name} - ambiguous?")
-            board = board[0]
+            board = found
 
         fid = None
         filts = self.fetch_quickfilters_by_board(board)
