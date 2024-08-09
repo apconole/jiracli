@@ -177,6 +177,22 @@ class JiraConnector(object):
         if issue is not None:
             self.jira.add_comment(issue, comment_body)
 
+    def add_watcher(self, issue_identifier, watcher):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        issue = self.get_issue(issue_identifier)
+        if issue is not None:
+            self.jira.add_watcher(issue, watcher)
+
+    def del_watcher(self, issue_identifier, watcher):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        issue = self.get_issue(issue_identifier)
+        if issue is not None:
+            self.jira.remove_watcher(issue, watcher)
+
     def _order_by_from_string(self, order_by_string) -> str:
         orders = [("none", ""),
                   ("prio-asc", "priority asc"),

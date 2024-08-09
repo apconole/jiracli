@@ -279,6 +279,32 @@ def set_state_cmd(issuekey, status):
 
 
 @click.command(
+    name="add-watcher"
+)
+@click.argument('issuekey')
+@click.argument('watcher')
+def add_watcher_cmd(issuekey, watcher):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    jobj.add_watcher(issuekey, watcher)
+    click.echo('done.')
+
+
+@click.command(
+    name="del-watcher"
+)
+@click.argument('issuekey')
+@click.argument('watcher')
+def del_watcher_cmd(issuekey, watcher):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    jobj.del_watcher(issuekey, watcher)
+    click.echo('done.')
+
+
+@click.command(
     name="set-field"
 )
 @click.argument('issuekey')
