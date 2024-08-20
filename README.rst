@@ -241,6 +241,42 @@ Setting the state can be done by::
   $ jcli issues set-status BUG-123 Post
   done.
 
+Using attachments
+-----------------
+
+When printing an issue, any attachments will be displayed with their
+filesize, creator, and name::
+
+  | Attachments:                                                                                                                             |
+  +--------------------+------------------------------+--------+--------------+
+  | File               | Created                      |   Size | Creator      |
+  |--------------------+------------------------------+--------+--------------|
+  | some_filename_here | 2024-08-20T12:40:18.714+0000 |   4342 | Aaron Conole |
+  +--------------------+------------------------------+--------+--------------+
+
+To download, you can simply use the attachments sub-command::
+
+  $ jcli issues attachments --pull some_filename_here BUG-123
+  Downloading: some_filename_here
+  $ 
+
+If you use the attachments without any options, the same list will be displayed.
+In this case, it will include an index to use as an alternate fetch-id::
+
+  $ jcli issues attachments BUG-123
+  +------+-------------------+------------------------------+--------+------------+
+  |   Id | File               | Created                      |   Size | Creator    |
+  |    0 | some_filename_here | 2024-08-20T12:40:18.714+0000 |   4342 | Aaron Conole |
+  |------+-------------------+------------------------------+--------+------------|
+  $ jcli issues attachments --pull 0 BUG-123
+  Downloading: some_filename_here
+  $
+
+To upload, use the `--push` option with a filename::
+
+  $ jcli issues attachments --push /tmp/data.txt BUG-321
+  $
+
 Reporting Issues in JIRA
 ------------------------
 

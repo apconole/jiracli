@@ -776,3 +776,18 @@ class JiraConnector(object):
             raise RuntimeError("Need to log-in first.")
 
         return self.jira.project(project).components
+
+    def fetch_attachment(self, attachmentid, target):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        attachment = self.jira.attachment(attachmentid)
+        data = attachment.get()
+        with open(target, 'wb') as f:
+            f.write(data)
+
+    def upload_attachment(self, issue, attachment_file, name):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        self.jira.add_attachment(issue.id, attachment_file, name)

@@ -1,6 +1,7 @@
 import click
 import csv
 import logging
+import os
 import pprint
 import re
 import shutil
@@ -205,6 +206,18 @@ def show_cmd(issuekey, raw, width):
             output += f"| {summ[:max_width - 4]:<{max_width - 4}} |\n"
             summ = summ[max_width - 4:]
     output += "+" + '-' * (max_width - 2) + "+\n\n"
+
+    if issue.fields.attachment is not None and \
+       len(issue.fields.attachment) > 0:
+        output += f"| Attachments: {' ' * (max_width - 17)} |\n"
+        attach_display = []
+        for attachment in issue.fields.attachment:
+            attach = (attachment.filename, attachment.created, attachment.size,
+                      attachment.author.displayName)
+            attach_display.append(attach)
+        final = tabulate(attach_display, ('File', 'Created', 'Size', 'Creator'),
+                         'psql')
+        output += final + "\n\n"
 
     descr = jobj.get_field(issue, 'description')
     if len(descr) > 0:
@@ -588,3 +601,52 @@ def create_issue_cmd(summary, description, project, issue_type, set_field,
         click.echo(f"Creating: {pprint.pformat(issue)}")
     result = "DRY-OKAY" if dry_run else jobj.create_issue(issue)
     click.echo(f"done - Result: {result}.")
+
+
+@click.command(
+    name='attachments'
+)
+@click.argument('issuekey')
+@click.option("--pull", default=None,
+              help="The attachment ID to download")
+@click.option("--push", default=None,
+              help="file to upload as attachment")
+def attachments_cmd(issuekey, pull, push):
+    jobj = connector.JiraConnector()
+    jobj.login()
+    issue = jobj.get_issue(issuekey)
+
+    if pull and push:
+        raise click.UsageError("Invalid pull and push specified.")
+
+    if pull:
+        i = 0
+        for attachment in issue.fields.attachment:
+            if pull == attachment.filename or pull == str(i):
+                click.echo(f"Downloading: {attachment.filename}")
+                jobj.fetch_attachment(attachment.id, attachment.filename)
+                return
+            i += 1
+        click.echo(f"Unknown attachment {pull}.")
+        return
+
+    if push:
+        with open(push, 'rb') as f:
+            jobj.upload_attachment(issue, f, os.path.basename(push))
+        return
+
+    output = "Attachments:\n"
+    if issue.fields.attachment is not None and \
+       len(issue.fields.attachment) > 0:
+        attach_display = []
+        i = 0
+        for attachment in issue.fields.attachment:
+            attach = (i, attachment.filename, attachment.created,
+                      attachment.size, attachment.author.displayName)
+            attach_display.append(attach)
+            i += 1
+        final = tabulate(attach_display,
+                         ('Id', 'File', 'Created', 'Size', 'Creator'),
+                         'psql')
+        output += final + "\n\n"
+    click.echo(output)
