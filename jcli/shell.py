@@ -75,6 +75,7 @@ issues.add_command(issues_cmds.create_issue_cmd)
 issues.add_command(issues_cmds.add_watcher_cmd)
 issues.add_command(issues_cmds.del_watcher_cmd)
 issues.add_command(issues_cmds.attachments_cmd)
+issues.add_command(issues_cmds.get_field_cmd)
 
 details.add_command(details_cmds.last_states_cmd)
 details.add_command(details_cmds.server_info_cmd)

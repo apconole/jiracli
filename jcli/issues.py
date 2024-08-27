@@ -318,6 +318,19 @@ def del_watcher_cmd(issuekey, watcher):
 
 
 @click.command(
+    name="get-field"
+)
+@click.argument('issuekey')
+@click.argument('fieldname')
+def get_field_cmd(issuekey, fieldname):
+    jobj = connector.JiraConnector()
+    jobj.login()
+    issue = jobj.get_issue(issuekey)
+    field = jobj.get_field(issue, fieldname)
+    click.echo(f"{fieldname}: {field}")
+
+
+@click.command(
     name="set-field"
 )
 @click.argument('issuekey')
