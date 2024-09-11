@@ -207,9 +207,36 @@ def show_cmd(issuekey, raw, width):
             summ = summ[max_width - 4:]
     output += "+" + '-' * (max_width - 2) + "+\n\n"
 
+    if issue.fields.issuelinks is not None and \
+       len(issue.fields.issuelinks) > 0:
+        output += f"| Links: {' ' * (max_width - 11)} |\n"
+        output += f"|{'-' * (max_width - 2)}|\n"
+        for link in issue.fields.issuelinks:
+            link_text = ""
+            if hasattr(link, "outwardIssue"):
+                link_text = f"| - Linked To Issue: {link.outwardIssue}"
+            if hasattr(link, "inwardIssue"):
+                link_text = f"| - Linked From Issue: {link.inwardIssue}"
+            if len(link_text):
+                output += link_text + ' ' * (max_width - (len(link_text) + 1))
+                output += "|\n"
+
+        remote_links = jobj.jira.remote_links(issue.key)
+        for link_id in remote_links:
+            link = jobj.jira.remote_link(issuekey, link_id)
+            if hasattr(link, "object"):
+                url = ""
+                if hasattr(link.object, "url"):
+                    url = link.object.url
+                link_text = f"| - Remote: {url}"
+                output += link_text + ' ' * (max_width - (len(link_text) + 1))
+                output += "|\n"
+        output += "\n"
+
     if issue.fields.attachment is not None and \
        len(issue.fields.attachment) > 0:
         output += f"| Attachments: {' ' * (max_width - 17)} |\n"
+        output += f"|{'-' * (max_width - 2)}|\n"
         attach_display = []
         for attachment in issue.fields.attachment:
             attach = (attachment.filename, attachment.created, attachment.size,
