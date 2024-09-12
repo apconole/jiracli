@@ -178,6 +178,8 @@ def show_cmd(issuekey, raw, width):
         click.echo(f"Error with {issuekey}")
         return
 
+    excluded = jobj.excluded_fields()
+
     output = "+" + '-' * (max_width - 2) + "+\n"
     pname = jobj.get_field(issue, 'project', 'name')
     aname = jobj.get_field(issue, 'assignee', 'name')
@@ -191,10 +193,14 @@ def show_cmd(issuekey, raw, width):
 
     output += f"| priority: {prio:<20} | status: {status:<34} |\n"
     output += "+" + '-' * (max_width - 2) + "+\n"
-    output += f"| URL: {jobj.issue_url(issuekey):<{max_width - 9}} |\n"
-    output += "+" + '-' * (max_width - 2) + "+\n"
-    output += f"| summary: {' ' * (max_width - 13)} |\n"
-    output += f"| ------- {' ' * (max_width - 12)} |\n"
+
+    if 'url' not in excluded:
+        output += f"| URL: {jobj.issue_url(issuekey):<{max_width - 9}} |\n"
+        output += "+" + '-' * (max_width - 2) + "+\n"
+
+    if 'summary' not in excluded:
+        output += f"| summary: {' ' * (max_width - 13)} |\n"
+        output += f"| ------- {' ' * (max_width - 12)} |\n"
 
     for issue_field in jobj.requested_fields():
         output += f"| {issue_field:<25}: {jobj.get_field(issue, issue_field):<{max_width - 31}} |\n"
@@ -207,7 +213,7 @@ def show_cmd(issuekey, raw, width):
             summ = summ[max_width - 4:]
     output += "+" + '-' * (max_width - 2) + "+\n\n"
 
-    if issue.fields.issuelinks is not None and \
+    if 'links' not in excluded and issue.fields.issuelinks is not None and \
        len(issue.fields.issuelinks) > 0:
         output += f"| Links: {' ' * (max_width - 11)} |\n"
         output += f"|{'-' * (max_width - 2)}|\n"
@@ -233,8 +239,8 @@ def show_cmd(issuekey, raw, width):
                 output += "|\n"
         output += "\n"
 
-    if issue.fields.attachment is not None and \
-       len(issue.fields.attachment) > 0:
+    if 'attachments' not in excluded and issue.fields.attachment is not None \
+       and len(issue.fields.attachment) > 0:
         output += f"| Attachments: {' ' * (max_width - 17)} |\n"
         output += f"|{'-' * (max_width - 2)}|\n"
         attach_display = []
@@ -247,15 +253,15 @@ def show_cmd(issuekey, raw, width):
         output += final + "\n\n"
 
     descr = jobj.get_field(issue, 'description')
-    if len(descr) > 0:
+    if 'description' not in excluded and len(descr) > 0:
         output += f"| Description: {' ' * (max_width - 17)} |\n"
         output += f"|{'-' * (max_width - 2)}|\n"
         output += fitted_blocks(descr, max_width - 4, "|")
 
-    output += f"+ Comments: {' ' * (max_width - 14)} |\n"
+    comments_block = f"+ Comments: {' ' * (max_width - 14)} |\n"
     for comment in issue.fields.comment.comments:
         if max_width < 80:
-            output += f"| Author: {comment.author.displayName:<14} [~{comment.author.name:<18}] | {comment.created:<20} |\n"
+            comments_block += f"| Author: {comment.author.displayName:<14} [~{comment.author.name:<18}] | {comment.created:<20} |\n"
         else:
             add_ln = f"| Author: {comment.author.displayName:<20} [~{comment.author.name:<20}] | {comment.id:<18} | {comment.created:<20}"
             if len(add_ln) > max_width:
@@ -264,10 +270,13 @@ def show_cmd(issuekey, raw, width):
                 diff = max_width - (len(add_ln) + 1)
                 add_ln += " " * diff
                 add_ln += "|\n"
-            output += add_ln
-        output += f"|{'-' * (max_width - 2)}|\n"
-        output += fitted_blocks(comment.body, max_width - 4, "|")
-        output += "+" + '-' * (max_width - 2) + "+\n"
+            comments_block += add_ln
+        comments_block += f"|{'-' * (max_width - 2)}|\n"
+        comments_block += fitted_blocks(comment.body, max_width - 4, "|")
+        comments_block += "+" + '-' * (max_width - 2) + "+\n"
+
+    if 'comments' not in excluded:
+        output += comments_block
 
     display_via_pager(output, f"Issue: {issuekey}")
 

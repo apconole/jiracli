@@ -67,6 +67,37 @@ you can run in interactive mode with::
 This will give an interactive interface to the jcli suite of
 commands.
 
+Jira yaml field selection
+-------------------------
+
+The `.jira.yaml` does allow to select fields for inclusion, and
+alternatively for exclusion.  The fields section looks like::
+
+  jira:
+  server: https://issues.place.com
+  issues:
+    - field:
+      name: Some Field
+      [exclude: true|false]
+
+The exclude line for a field is optional, and can be either true
+or false.  There are some 'built-in' fields that have support:
+
+ - url
+   The URL for the issue
+ - comments
+   All of the comments associated with an issue
+ - description
+   The description of an issue
+ - links
+   Any issue or remote links associated with an issue
+ - attachments
+   Attachments that are added to an issue
+
+By default, all of the fields above are included in the issue
+display, so you will require changes to the yaml file in order
+to disable them.
+
 Interfacing with issues
 -----------------------
 

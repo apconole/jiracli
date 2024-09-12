@@ -312,9 +312,27 @@ class JiraConnector(object):
         issue_config = self.config['jira']['issues']
         for cfg in issue_config:
             if 'field' in cfg and cfg['field'] and 'name' in cfg['field']:
-                requested.append(cfg['field']['name'])
+                if 'exclude' not in cfg['field'] or not cfg['field']['exclude']:
+                    requested.append(cfg['field']['name'])
 
         return requested
+
+    def excluded_fields(self) -> list:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        excluded = []
+
+        if 'issues' not in self.config['jira']:
+            return excluded
+
+        issue_config = self.config['jira']['issues']
+        for cfg in issue_config:
+            if 'field' in cfg and cfg['field'] and 'name' in cfg['field']:
+                if 'exclude' in cfg['field'] and cfg['field']['exclude']:
+                    excluded.append(cfg['field']['name'])
+
+        return excluded
 
     def _try_fieldname(self, fieldname) -> str:
         """Tries to pick the fieldname for a passed in field"""
