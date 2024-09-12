@@ -287,7 +287,9 @@ def show_cmd(issuekey, raw, width):
 @click.argument('issuekey')
 @click.option("--comment", type=str, default=None,
               help="The comment text to add.  Defaults to opening an editor.")
-def add_comment_cmd(issuekey, comment):
+@click.option("--visibility", type=str, default='all',
+              help="Sets the group / role for visibility.  Defaults to 'all'.")
+def add_comment_cmd(issuekey, comment, visibility):
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -298,7 +300,73 @@ def add_comment_cmd(issuekey, comment):
         click.echo("Error: No comment provided.")
         sys.exit(1)
 
-    jobj.add_comment(issuekey, comment)
+    jobj.add_comment(issuekey, comment, visibility)
+
+
+@click.command(
+    name="del-comment"
+)
+@click.argument('issuekey')
+@click.argument('comment_id')
+def del_comment_cmd(issuekey, comment_id):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    issue = jobj.get_issue(issuekey)
+    if issue is None:
+        click.echo(f"Issue {issuekey} not found.")
+        return
+
+    comment = jobj.get_comment(issue.raw['key'], comment_id)
+    if comment is not None:
+        comment.delete()
+        click.echo(f"Comment {comment_id} deleted.")
+    else:
+        click.echo(f"Comment {comment_id} for issue {issuekey} not found.")
+
+
+@click.command('update-comment')
+@click.argument('issuekey')
+@click.argument('comment_id')
+@click.option("--body", type=str, default=None,
+              help="Set new body to the argument.")
+@click.option('--visibility', type=str, default=None,
+              help="Sets the group / role for visibility.  Use 'all' for no restriction.")
+def update_comment_cmd(issuekey, comment_id, body, visibility):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    issue = jobj.get_issue(issuekey)
+    if issue is None:
+        click.echo(f"Issue {issuekey} not found.")
+        return
+
+    comment = jobj.get_comment(issue.raw['key'], comment_id)
+    if comment is None:
+        click.echo(f"Comment {comment_id} for issue {issuekey} not found.")
+
+    update = {}
+    body_text = None
+    if body is None:
+        body_text = get_text_via_editor(comment.body)
+    elif body != "":
+        body_text = body
+
+    if body_text:
+        update['body'] = body_text
+
+    if visibility is not None:
+        if visibility.lower() == 'all':
+            update['visibility'] = {'identifier': None}
+        else:
+            update['visibility'] = {'type': 'group', 'value': visibility}
+
+    if len(update) == 0:
+        click.echo("No Changes.")
+        return
+
+    comment.update(**update)
+    click.echo(f"Comment {comment_id} updated.")
 
 
 @click.command(

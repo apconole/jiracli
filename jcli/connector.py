@@ -168,14 +168,24 @@ class JiraConnector(object):
 
         return issue_url
 
-    def add_comment(self, issue_identifier, comment_body):
+    def add_comment(self, issue_identifier, comment_body, visibility):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
         issue = self.get_issue(issue_identifier)
 
+        if isinstance(visibility, str) and visibility != 'all':
+            visibility = {'type': 'group', 'value': visibility}
+
         if issue is not None:
-            self.jira.add_comment(issue, comment_body)
+            self.jira.add_comment(issue, comment_body, visibility)
+
+    def get_comment(self, issue_identifier, comment_id):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        comment = self.jira.comment(issue_identifier, comment_id)
+        return comment
 
     def add_watcher(self, issue_identifier, watcher):
         if self.jira is None:

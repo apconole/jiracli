@@ -222,6 +222,29 @@ temporary file which will be pushed to the issue as a comment.  Alternatively,
 the **add-comment** command can accept a `--comment` option to fill a comment
 from the command line directly.
 
+You can set the comment visibility when creating a comment::
+
+  $ jcli issues add-comment BUG-123 --visibility 'Some Group'
+  ...
+
+This will set the comment's visibility property to restrict viewing to
+a specific group.
+
+You can also edit a specific comment with the `update-comment` command::
+
+  $ jcli issues update-comment BUG-123 11223344
+  ...
+
+This will first populate the body text in an editor.  It will then setup the
+visibility settings.  You can use the `--visibility` option just as with
+adding a comment.
+
+To delete a comment::
+
+  $ jcli issues del-comment BUG-123 11223344
+
+This will attempt to delete a comment.
+
 Comment Formatting
 ------------------
 
