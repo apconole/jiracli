@@ -263,7 +263,13 @@ def show_cmd(issuekey, raw, width):
         if max_width < 80:
             comments_block += f"| Author: {comment.author.displayName:<14} [~{comment.author.name:<18}] | {comment.created:<20} |\n"
         else:
-            add_ln = f"| Author: {comment.author.displayName:<20} [~{comment.author.name:<20}] | {comment.id:<18} | {comment.created:<20}"
+            v = "all"
+            try:
+                v = f"{comment.visibility.value}"
+            except:
+                pass
+            visibility = f"{v:<20} | "
+            add_ln = f"| Author: {comment.author.displayName:<20} [~{comment.author.name:<20}] | {comment.id:<18} | {visibility}{comment.created:<20}"
             if len(add_ln) > max_width:
                 add_ln += "\n"
             else:
