@@ -176,6 +176,8 @@ class JiraConnector(object):
 
         if isinstance(visibility, str) and visibility != 'all':
             visibility = {'type': 'group', 'value': visibility}
+        elif isinstance(visibility, str):
+            visibility = None
 
         if issue is not None:
             self.jira.add_comment(issue, comment_body, visibility)
