@@ -191,7 +191,11 @@ def show_cmd(issuekey, raw, width):
 
     summ = jobj.get_field(issue, 'summary')
 
+    reporter = jobj.get_field(issue, 'reporter', 'name')
+
     output += f"| priority: {prio:<20} | status: {status:<34} |\n"
+    output += "+" + '-' * (max_width - 2) + "+\n"
+    output += f"| Reporter: {reporter:<{max_width - 14}} |\n"
     output += "+" + '-' * (max_width - 2) + "+\n"
 
     if 'url' not in excluded:
