@@ -523,6 +523,10 @@ class JiraConnector(object):
         elif field_type == "date":
             return datetime.strptime(field_value, "%Y-%m-%d").date()
         elif field_type == "array":
+            parser = field_value.replace(' ', '').replace('\t', '').replace('\r', '')
+            if parser.lower().startswith("{\"value\":") or \
+               parser.lower().startswith("{'value':"):
+                field_value = eval(field_value)
             return [field_value]
         # Add more conversions for other field types as needed
 
