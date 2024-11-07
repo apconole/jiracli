@@ -88,6 +88,7 @@ details.add_command(details_cmds.components_info_cmd)
 boards.add_command(boards_cmds.list_cmd)
 boards.add_command(boards_cmds.show_cmd)
 boards.add_command(boards_cmds.get_config_cmd)
+boards.add_command(boards_cmds.sprints_cmd)
 
 users.add_command(users_cmds.users_find_cmd)
 

@@ -135,3 +135,46 @@ def get_config_cmd(boardname):
             click.echo(f"quickfilter.name = \"{filt.name}\"")
             click.echo(f"quickfilter.query = \"{filt.query}\"")
             click.echo(f"quickfilter.id = \"{filt.id}\"")
+
+
+@click.command('sprints')
+@click.argument('boardname')
+@click.option('--name', type=str, default=None,
+              help='Display details for a specific sprint.')
+def sprints_cmd(boardname, name):
+    """
+    Displays the sprints of a board, optionally specified by 'name'
+    """
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    sprints = jobj.fetch_sprints_by_board(boardname)
+    base_filter = jobj.fetch_jql_config_by_board(boardname)
+    columns = jobj.fetch_column_config_by_board(boardname)
+    ISSUE_HEADER = [column for column in columns]
+
+    final_output = ""
+    for sprint in sprints:
+        if sprint.state == "closed":
+            continue
+
+        if name and name != sprint:
+            continue
+
+        issue_col_store = {column: [] for column in columns}
+        final_output += f"Sprint: {sprint}\n   start: {sprint.startDate} -> end: {sprint.endDate}\n"
+
+        issues_query = f'sprint = "{str(sprint)}" and {base_filter}'
+        issues = jobj._query_issues(issues_query, 0, 250)
+
+        for issue in issues:
+            for column in columns:
+                if is_issue_in_column(issue, columns[column], jobj):
+                    issuestr = f"{issue.key}"
+                    issue_col_store[column].append(issuestr)
+
+        if len(issues):
+            final_output += tabulate(issue_col_store, ISSUE_HEADER, 'psql')
+            final_output += "\n\n"
+
+    click.echo(final_output)

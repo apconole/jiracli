@@ -687,6 +687,12 @@ class JiraConnector(object):
 
         return issues_in_epics
 
+    def fetch_sprints_for_board(self, board, states=None) -> dict:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+        result = self.jira.sprints(board, None, 0, 50, states)
+        return result
+
     def fetch_column_config_by_board(self, board) -> dict:
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
