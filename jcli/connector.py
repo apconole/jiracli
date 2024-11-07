@@ -6,6 +6,7 @@ from jira.exceptions import JIRAError
 import jira
 import os
 import pathlib
+import pprint
 import types
 import yaml
 
@@ -409,6 +410,9 @@ class JiraConnector(object):
         if isinstance(val, dict):
             if 'name' in val:
                 return val['name']
+
+        if isinstance(val, jira.resources.PropertyHolder):
+            return pprint.pformat(vars(val))
 
         try:
             return str(val)
