@@ -508,7 +508,24 @@ class JiraConnector(object):
 
         issue.update(issue_dict)
 
-    def convert_to_field_type(self, field_id, field_value):
+    def object_convert(self, field_value):
+        listed = False
+        v = field_value
+        if v.startswith('[') and v.endswith(']'):
+            listed = True
+            v = v[1:-1]
+
+        for t in ["value", "name", "id"]:
+            if v.lower().startswith(f'{{"{t}') or \
+               v.lower().startswith(f'{{\'{t}'):
+                v = eval(v)
+
+        if listed:
+            v = [v]
+
+        return v
+
+    def _convert_to_field_type(self, field_id, field_value):
         """Convert the field value to the appropriate type."""
 
         field_type = self._fetch_field_type_mapping().get(field_id)
@@ -528,11 +545,15 @@ class JiraConnector(object):
             return datetime.strptime(field_value, "%Y-%m-%d").date()
         elif field_type == "array":
             parser = field_value.replace(' ', '').replace('\t', '').replace('\r', '')
-            if parser.lower().startswith("{\"value\":") or \
-               parser.lower().startswith("{'value':"):
-                field_value = eval(field_value)
-            return [field_value]
+            return [self.object_convert(parser)]
         # Add more conversions for other field types as needed
+
+    def convert_to_field_type(self, field_id, field_value):
+        try:
+            v = self.convert_to_field_type(field_id, field_value)
+        except ValueError:
+            v = self.object_convert(field_value)
+        return v
 
     def _fetch_field_type_mapping(self):
         """Fetch field type mapping from Jira."""
