@@ -3,6 +3,7 @@ import getpass
 from jcli import utils
 from jira import JIRA
 from jira.exceptions import JIRAError
+from jira.utils import json_loads
 import jira
 import os
 import pathlib
@@ -138,6 +139,20 @@ class JiraConnector(object):
             # Otherwise, assume it's the issue key
             issue = self.jira.issue(issue_identifier, fields='*all')
 
+        # Add support for the EZ Agile Planning Poker extension
+        if issue is not None and 'eausm' not in self.config['jira'] or \
+           bool(self.config['jira']['eausm']):
+            # Check for the EZ Agile Planning Poker ext on the server
+            EAUSM_url = self.jira.server_url + \
+                f"/rest/eausm/latest/planningPoker/{issue.id}"
+            r = self.jira._session.get(EAUSM_url)
+            try:
+                EAUSM_json = json_loads(r)
+                issue.raw['fields']['eausm'] = EAUSM_json
+            except:
+                # set the in-memory config to false for now.  Future
+                # requests won't trigger EAUSM code any more.
+                self.config['jira']['eausm'] = False
         return issue
 
     def get_states_for_issue(self, issue_identifier) -> list:
@@ -386,7 +401,11 @@ class JiraConnector(object):
                     for sf in issue.raw['fields'][fieldname]:
                         if 'name' in sf:
                             results.append(f"{sf['name']}")
+                        elif 'vote' in sf:
+                            results.append(f"{sf['vote']}")
                     return ",".join(results)
+                elif isinstance(issue.raw['fields'][fieldname], dict):
+                    return str(issue.raw['fields'][fieldname])
                 return "(undecoded)"
 
         fields = self._fetch_custom_fields()

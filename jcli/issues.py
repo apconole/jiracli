@@ -217,6 +217,29 @@ def show_cmd(issuekey, raw, width):
             summ = summ[max_width - 4:]
     output += "+" + '-' * (max_width - 2) + "+\n\n"
 
+    if 'eausm' not in excluded and 'eausm' in issue.raw['fields']:
+        output += "+" + '-' * (max_width - 2) + "+\n"
+        output += f"| EZ Agile: {' ' * (max_width - 14)} |\n"
+
+        if 'votes' in issue.raw['fields']['eausm']:
+            total = 0
+            if not len(issue.raw['fields']['eausm']['votes']):
+                output += f"| No Votes{' ' * (max_width - 12)} |\n"
+            for vote in issue.raw['fields']['eausm']['votes']:
+                total += int(vote['vote'])
+                user = jobj.find_users_for_name(vote['userId'])
+                if len(user):
+                    user = user[0].displayName
+                else:
+                    user = "Unknown?"
+                output += f"| Vote: {vote['vote']} by {user} {' ' * (max_width - (15 + len(user) + len(str(vote['vote']))))} |\n"
+            output += "|" + '-' * (max_width - 2) + "|\n"
+            output += f"| Total: {str(total)} {' ' * (max_width - (len(str(total)) + 12))} |\n"
+        else:
+            output += f"| No votes. {' ' * (max_width - 14)} |\n"
+
+        output += "+" + '-' * (max_width - 2) + "+\n\n"
+
     if 'links' not in excluded and issue.fields.issuelinks is not None and \
        len(issue.fields.issuelinks) > 0:
         output += f"| Links: {' ' * (max_width - 11)} |\n"

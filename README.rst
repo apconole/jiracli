@@ -469,3 +469,29 @@ querying for board details::
   |-----------+------------+---------+---------------------+-----------------------+------------|
   +-----------+------------+---------+---------------------+-----------------------+------------+
 
+
+Server Side Extensions
+----------------------
+
+`jiracli` has some logic for some server side extensions.  Each extension
+is listed below.
+
+
+EZ Agile Planning Poker
+-----------------------
+
+The EZ Agile Planning Poker extension will automatically be detected and add
+the 'eausm' details to the issue.raw['fields'] object.  However, this
+currently isn't a proper jira type object, so it must be accessed as a dict
+obj.  Future enhancements will convert it to a proper object and allow
+voting for the picker.
+
+To disable the extension, set the `eausm` config in your `jira` block to
+*false*::
+
+  jira:
+    ...
+    eausm: false
+    ...
+
+This will disable any attempts at detected or using the eausm extensions.
