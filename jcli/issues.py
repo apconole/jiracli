@@ -800,3 +800,20 @@ def attachments_cmd(issuekey, pull, push):
                          'psql')
         output += final + "\n\n"
     click.echo(output)
+
+
+@click.command(
+    name='eausm-vote'
+)
+@click.argument('issuekey')
+@click.argument('vote')
+def eausm_vote_cmd(issuekey, vote):
+    jobj = connector.JiraConnector()
+    jobj.login()
+    issue = jobj.get_issue(issuekey)
+    if issue is None:
+        raise click.UsageError("Issue not found")
+
+    jobj.eausm_vote_issue(issue, vote)
+
+    click.echo("Voted.")

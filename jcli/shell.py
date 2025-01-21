@@ -78,6 +78,7 @@ issues.add_command(issues_cmds.attachments_cmd)
 issues.add_command(issues_cmds.get_field_cmd)
 issues.add_command(issues_cmds.del_comment_cmd)
 issues.add_command(issues_cmds.update_comment_cmd)
+issues.add_command(issues_cmds.eausm_vote_cmd)
 
 details.add_command(details_cmds.last_states_cmd)
 details.add_command(details_cmds.server_info_cmd)

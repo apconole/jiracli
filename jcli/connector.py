@@ -5,6 +5,7 @@ from jira import JIRA
 from jira.exceptions import JIRAError
 from jira.utils import json_loads
 import jira
+import json
 import os
 import pathlib
 import pprint
@@ -875,3 +876,23 @@ class JiraConnector(object):
             raise RuntimeError("Need to log-in first.")
 
         self.jira.add_attachment(issue.id, attachment_file, name)
+
+    def eausm_vote_issue(self, issue, vote):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+
+        if not issue:
+            raise RuntimeError("Invalid issue")
+
+        vote = int(vote)
+
+        EAUSM_url = f"{self.jira.server_url}/rest/eausm/latest/planningPoker/vote"
+        if 'eausm' not in self.config['jira'] or \
+           bool(self.config['jira']['eausm']):
+            payload = {"issueId": issue.id, "vote": vote}
+            self.jira._session.put(EAUSM_url, data=json.dumps(payload))
+        else:
+            raise RuntimeError("Voting by this client is disabled - check your jira yml.")
