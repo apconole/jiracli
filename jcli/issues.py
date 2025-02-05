@@ -473,7 +473,9 @@ def get_field_cmd(issuekey, fieldname):
 @click.argument('issuekey')
 @click.argument('fieldname')
 @click.argument('fieldvalue')
-def set_field_cmd(issuekey, fieldname, fieldvalue):
+@click.option("--forced", is_flag=True, default=False,
+              help="Force the value to be run through python eval and used as-is.")
+def set_field_cmd(issuekey, fieldname, fieldvalue, forced):
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -485,7 +487,7 @@ def set_field_cmd(issuekey, fieldname, fieldvalue):
 
     old = jobj.get_field(issue, fieldname)
 
-    jobj.set_field(issue, fieldname, fieldvalue)
+    jobj.set_field(issue, fieldname, fieldvalue, forced)
 
     new = jobj.get_field(issue, fieldname)
 

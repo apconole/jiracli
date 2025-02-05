@@ -502,7 +502,7 @@ class JiraConnector(object):
         full_fields = self.jira.project_issue_fields(project, issue_type.id)
         return [f.name for f in full_fields]
 
-    def set_field(self, issue, fieldname, val):
+    def set_field(self, issue, fieldname, val, forced=False):
         """Set the field for an issue to a particular value."""
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
@@ -513,17 +513,22 @@ class JiraConnector(object):
         issue_dict = {}
         if fieldname in issue.raw['fields']:
             f = eval(f"issue.fields.{fieldname}")
-            if not isinstance(f, types.NoneType):
+            if not isinstance(f, types.NoneType) and not forced:
                 val = self.convert_to_jira_type(f, val)
-            else:
+            elif not forced:
                 if fieldname == "assignee":
                     val = {"name": val}
+            else:
+                val = eval(val)
             issue_dict = {fieldname: val}
 
         fields = self._fetch_custom_fields()
         for field in fields:
             if fields[field] == fieldname:
-                val = self.convert_to_field_type(field, val)
+                if not forced:
+                    val = self.convert_to_field_type(field, val)
+                else:
+                    val = eval(val)
                 issue_dict = {field: val}
 
         issue.update(issue_dict)
