@@ -570,7 +570,7 @@ class JiraConnector(object):
 
     def convert_to_field_type(self, field_id, field_value):
         try:
-            v = self.convert_to_field_type(field_id, field_value)
+            v = self._convert_to_field_type(field_id, field_value)
         except ValueError:
             v = self.object_convert(field_value)
         return v
