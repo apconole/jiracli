@@ -162,7 +162,17 @@ def sprints_cmd(boardname, name):
             continue
 
         issue_col_store = {column: [] for column in columns}
-        final_output += f"Sprint: {sprint}, id: {sprint.id}\n   start: {sprint.startDate} -> end: {sprint.endDate}\n"
+        try:
+            start_date = sprint.startDate
+        except:
+            start_date = "0000-00-00T00:00:00.000Z"
+
+        try:
+            end_date = sprint.endDate
+        except:
+            end_date = "0000-00-00T00:00:00.000Z"
+
+        final_output += f"Sprint: {sprint}, id: {sprint.id}\n   start: {start_date} -> end: {end_date}\n"
 
         issues_query = f'sprint = "{str(sprint)}" and {base_filter}'
         issues = jobj._query_issues(issues_query, 0, 250)
