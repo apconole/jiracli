@@ -250,6 +250,8 @@ def show_cmd(issuekey, raw, width):
                 link_text = f"| - Linked To Issue: {link.outwardIssue}"
             if hasattr(link, "inwardIssue"):
                 link_text = f"| - Linked From Issue: {link.inwardIssue}"
+            if hasattr(link, "type") and hasattr(link.type, "name"):
+                link_text += f", Relationship: {link.type.name}"
             if len(link_text):
                 output += link_text + ' ' * (max_width - (len(link_text) + 1))
                 output += "|\n"
@@ -259,8 +261,12 @@ def show_cmd(issuekey, raw, width):
             link = jobj.jira.remote_link(issuekey, link_id)
             if hasattr(link, "object"):
                 url = ""
+                title = ""
                 if hasattr(link.object, "url"):
                     url = link.object.url
+                if hasattr(link.object, "title"):
+                    title = link.object.title
+                    url = f"[{title}|{url}]"
                 link_text = f"| - Remote: {url}"
                 output += link_text + ' ' * (max_width - (len(link_text) + 1))
                 output += "|\n"
