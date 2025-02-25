@@ -331,6 +331,32 @@ To upload, use the `--push` option with a filename::
   $ jcli issues attachments --push /tmp/data.txt BUG-321
   $
 
+Adding Links
+------------
+
+There are two types of links that can be added to a JIRA ticket.
+The first type is an issue relationship, which means that the target
+URL is actually another JIRA ticket.  This relationship has an associated
+LinkType and a direction (inward, or outward).  This can be added by::
+
+  $ jcli issues add-link BUG-132 BUG-123 "This is a comment" --link-type <>
+
+You can see the available link types, either with the tab-completion (if
+enabled), or via the associated `details` command::
+
+  $ jcli details link-types
+
+Setting the direction can be done via the `--relationship-type` option.
+*NOTE*: For the 'TITLE', you may use the value "none" to indicate no comment.
+
+
+Additionally, you may set a link to a remote URL.  That is via an http/https
+url::
+
+  $ jcli issues add-link BUG-123 https://www.github.com "GitHub Tracker"
+
+This will set a remote link against the JIRA ticket.
+
 Reporting Issues in JIRA
 ------------------------
 

@@ -882,6 +882,33 @@ class JiraConnector(object):
 
         self.jira.add_attachment(issue.id, attachment_file, name)
 
+    def add_issue_link(self, issue, target, title=None, link_type=None, isinward=False):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if not target.startswith("http://") and not target.startswith("https://"):
+            tgtcheck = self.get_issue(target)
+            link_types = self.jira.issue_link_types()
+            if tgtcheck is None:
+                raise ValueError(
+                    f"Target {target} looks like an issue, but no issue matches.")
+            if not link_type or not any(t.name == link_type for t in link_types):
+                raise ValueError(
+                    f"Invalid link type.  Please specify one of {','.join([t.name for t in link_types])}.")
+
+            inwardissue = target if not isinward else issue
+            outwardissue = issue if not isinward else target
+            comment = None
+            if title:
+                comment = {"body": title}
+
+            self.jira.create_issue_link(link_type, inwardissue, outwardissue, comment)
+        else:
+            if not title:
+                title = target
+            link = {"url": target, "title": title}
+            self.jira.add_simple_link(issue, link)
+
     def eausm_vote_issue(self, issue, vote):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")

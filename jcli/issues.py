@@ -819,3 +819,62 @@ def eausm_vote_cmd(issuekey, vote):
     jobj.eausm_vote_issue(issue, vote)
 
     click.echo("Voted.")
+
+
+def get_link_type_choices():
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    return [x.name for x in jobj.jira.issue_link_types()]
+
+
+@click.command(
+    name="add-link"
+)
+@click.argument('issuekey')
+@click.argument('url')
+@click.argument('title')
+@click.option("--relationship-type",
+              type=click.Choice(["inward", "outward"],
+                                case_sensitive=False),
+              default='outward',
+              help="Add a link to the issue.")
+@click.option("--link-type",
+              type=click.Choice(get_link_type_choices(),
+                                case_sensitive=False),
+              help="Set a relationship.")
+def add_link_cmd(issuekey, url, title, relationship_type, link_type):
+    """Adds a new link to URL to the issue at ISSUEKEY.
+
+       TITLE will be used as a title if the URL is a remote url.  It will be
+       treated as a comma if the remote link is another issue.  If it is set
+       to the value 'none', it will be defaulted."""
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    issue = jobj.get_issue(issuekey)
+    if issue is None:
+        raise ValueError(f"Issue {issuekey} not found")
+
+    if title.lower() == "none":
+        title = None
+
+    if issue.fields.issuelinks is not None and \
+       len(issue.fields.issuelinks) > 0:
+        links = issue.fields.issuelinks if link_type == 'issue' else \
+            jobj.jira.remote_links(issue.key)
+        found = False
+        for link in links:
+            if hasattr(link, "object") and hasattr(link.object, "url") and \
+               url == link.object.url:
+                found = True
+            elif hasattr(link, 'outwardIssue') and link.outwardIssue == url:
+                found = True
+            elif hasattr(link, 'inwardIssue') and link.inwardIssue == url:
+                found = True
+        if found:
+            click.echo(f"{url} already added to issue.")
+            return
+
+    # if we got here, this is a new link
+    jobj.add_issue_link(issuekey, url, title, link_type)
