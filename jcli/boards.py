@@ -189,8 +189,7 @@ def sprints_cmd(boardname, name, show_all, my_issues):
             for column in columns:
                 if is_issue_in_column(issue, columns[column], jobj):
                     if my_issues and \
-                       jobj.get_field(issue, 'assignee', 'name') != \
-                           match_assignee:
+                       jobj.get_field(issue, 'assignee', 'name') != match_assignee:
                         continue
                     issuestr = f"{issue.key}"
                     issue_col_store[column].append(issuestr)
