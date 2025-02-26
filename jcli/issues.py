@@ -829,7 +829,10 @@ def eausm_vote_cmd(issuekey, vote):
 
 def get_link_type_choices():
     jobj = connector.JiraConnector()
-    jobj.login()
+    try:
+        jobj.login()
+    except:
+        return []
 
     return [x.name for x in jobj.jira.issue_link_types()]
 

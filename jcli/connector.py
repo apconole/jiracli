@@ -21,8 +21,11 @@ class JiraConnector(object):
 
     def _load_cfg(self):
         """Load a config yaml"""
-        with open(self.config_file, 'r') as f:
-            config = yaml.safe_load(f)
+        try:
+            with open(self.config_file, 'r') as f:
+                config = yaml.safe_load(f)
+        except FileNotFoundError:
+            config = {'jira': {}}
 
         if 'jira' not in config:
             raise ValueError("Missing jira section in config yaml")
