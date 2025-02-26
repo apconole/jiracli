@@ -141,7 +141,11 @@ def get_config_cmd(boardname):
 @click.argument('boardname')
 @click.option('--name', type=str, default=None,
               help='Display details for a specific sprint.')
-def sprints_cmd(boardname, name):
+@click.option('--show-all', type=bool, is_flag=True, default=False,
+              help='Display all sprints, including closed sprints.')
+@click.option('--my-issues', type=bool, is_flag=True, default=False,
+              help='Display only those issues in the sprint where assignee is me.')
+def sprints_cmd(boardname, name, show_all, my_issues):
     """
     Displays the sprints of a board, optionally specified by 'name'
     """
@@ -155,7 +159,7 @@ def sprints_cmd(boardname, name):
 
     final_output = ""
     for sprint in sprints:
-        if sprint.state == "closed":
+        if not show_all and sprint.state == "closed":
             continue
 
         if name and name != sprint:
@@ -177,9 +181,17 @@ def sprints_cmd(boardname, name):
         issues_query = f'sprint = "{str(sprint)}" and {base_filter}'
         issues = jobj._query_issues(issues_query, 0, 250)
 
+        match_assignee = None
+        if my_issues:
+            match_assignee = jobj.myself()
+
         for issue in issues:
             for column in columns:
                 if is_issue_in_column(issue, columns[column], jobj):
+                    if my_issues and \
+                       jobj.get_field(issue, 'assignee', 'name') != \
+                           match_assignee:
+                        continue
                     issuestr = f"{issue.key}"
                     issue_col_store[column].append(issuestr)
 
