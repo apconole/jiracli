@@ -10,6 +10,7 @@ import json
 import os
 import pathlib
 import pprint
+import re
 import types
 import yaml
 
@@ -941,3 +942,48 @@ class JiraConnector(object):
             self.jira._session.put(EAUSM_url, data=json.dumps(payload))
         else:
             raise RuntimeError("Voting by this client is disabled - check your jira yml.")
+
+    def jira_text_field_to_md(self, jira_text):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if not jira_text:
+            return jira_text
+
+        if 'default' not in self.config['jira'] or \
+           'markdown' not in self.config['jira']['default'] or \
+           not bool(self.config['jira']['default']['markdown']):
+            return jira_text
+
+        # Convert any COMMENT references before anything else
+        # There are lots of patterns that can match, so we need to make this
+        # early on in the parsing
+        jira_comment_pattern = re.compile(r'\[(.*?)\|(https?://.*?/browse/([A-Z]+-\d+)\?focusedId=(\d+).*?)\]')
+        text = jira_comment_pattern.sub(r'[\1](\3#\4)', jira_text)
+
+        text = utils.jira_to_md(text)
+        return text
+
+    def md_text_to_jira_text_field(self, md_text):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if not md_text:
+            return md_text
+
+        if 'default' not in self.config['jira'] or \
+           'markdown' not in self.config['jira']['default'] or \
+           not bool(self.config['jira']['default']['markdown']):
+            return md_text
+
+        serverurl = self.jira.server_url
+        if not serverurl.endswith('/'):
+            serverurl = serverurl + '/'
+
+        markdown_comment_pattern = re.compile(r'\[(.*?)\]\(([A-Z]+-\d+)#(\d+)\)')
+        text = markdown_comment_pattern.sub(
+            lambda m: f"[{m.group(1)}|{serverurl}browse/{m.group(2)}?focusedId={m.group(3)}&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-{m.group(3)}]",
+            md_text
+        )
+        text = utils.md_to_jira(text)
+        return text

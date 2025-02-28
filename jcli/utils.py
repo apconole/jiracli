@@ -147,3 +147,123 @@ def git_get_commit_formatted(shasum) -> str:
         return None
 
     return o.stdout.decode('utf-8')
+
+
+def extract_protected_blocks(text, protection_tag, blocks=[]):
+    """
+    Extracts tagged blocks and replaces them with placeholders to avoid modification.
+    Returns the processed text and a list of extracted blocks.
+    """
+
+    def replace_with_placeholder(match):
+        blocks.append(match.group(0))  # Store the full block
+        return f"<<<BLOCK{len(blocks) - 1}>>>"  # Placeholder
+
+    block_text = f"\\{{{protection_tag}\\}}.*?\\{{{protection_tag}\\}}"
+    text = re.sub(block_text, replace_with_placeholder,
+                  text, flags=re.DOTALL)
+
+    return text, blocks
+
+
+def restore_protected_blocks(text, blocks):
+    """
+    Restores {noformat} blocks from placeholders.
+    """
+    for i, block in enumerate(blocks):
+        text = text.replace(f"<<<BLOCK{i}>>>", block)
+    return text
+
+
+def jira_to_md(text):
+    """Converts JIRA comments to markdown"""
+    # Pull out the text vs noformat blocks
+    all_blocks = []
+    text, all_blocks = extract_protected_blocks(text, 'noformat', all_blocks)
+    text, all_blocks = extract_protected_blocks(text, 'code(:[a-zA-Z0-9]+)?', all_blocks)
+
+    # Convert lists (need to do this before headers)
+    text = re.sub(r'^\*\s*(.*?)$', r'- \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^#\s*(.*?)$', r'1. \1', text, flags=re.MULTILINE)
+
+    # Convert headers
+    text = re.sub(r'^h1\.\s*(.*?)$', r'# \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^h2\.\s*(.*?)$', r'## \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^h3\.\s*(.*?)$', r'### \1', text, flags=re.MULTILINE)
+
+    # Convert bold and italics
+    text = re.sub(r'\*(.*?)\*', r'**\1**', text)
+    text = re.sub(r'_(.*?)_', r'*\1*', text)
+
+    # Convert inline code
+    text = re.sub(r'{{(.*?)}}', r'`\1`', text)
+
+    # Convert to a markdown URL
+    text = re.sub(r'\[([^\]|]+)\|([^\]]*://[^\]]+)\]', r'[\1](\2)', text)
+
+    # Convert noformat and code tags
+    for i in range(len(all_blocks)):
+        bt = re.sub(r'\{noformat\}\n?(.*)\n?\{noformat\}',
+                    lambda m: '\n'.join(f"> {line}" for line in m.group(1).splitlines()),
+                    all_blocks[i],
+                    flags=re.DOTALL)
+        if bt == all_blocks[i]:
+            bt = re.sub(r'\{code:?([a-zA-Z0-9]+)?\}\n?(.*)\n?\{code(:[a-zA-Z0-9]+)?\}',
+                        lambda m: f"```{m.group(1) if m.group(1) else ''}\n{m.group(2)}\n```",
+                        all_blocks[i],
+                        flags=re.DOTALL)
+
+        all_blocks[i] = bt
+
+    text = restore_protected_blocks(text, all_blocks)
+    return text
+
+
+def md_to_jira(text):
+    """Converts markdown to JIRA comments"""
+
+    # Crazy hack ahead.  We convert the code and noformat tags virst, then
+    # store them in blocks.  Then at the end restore the blocks without
+    # modifying them
+
+    # Convert Markdown blockquotes (`> `) to Jira `{noformat}`
+    blockquote_pattern = re.compile(r'(^> .+(?:\n> .+)*)', re.MULTILINE)
+    text = blockquote_pattern.sub(
+        lambda m: "{noformat}\n" + "\n".join(line.lstrip("> ") for line in m.group(1).splitlines()) + "\n{noformat}",
+        text
+    )
+
+    # Convert Markdown code blocks (```) to Jira `{code}`
+    text = re.sub(
+        r'```([a-zA-Z0-9]*)\n?(.*?)(?:\n)?```',
+        lambda m: "{code" + (f":{m.group(1)}}}" if m.group(1) else "}") + f"\n{m.group(2)}{{code}}",
+        text,
+        flags=re.DOTALL
+    )
+
+    # Convert URL formats for http/https
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+://[^\)]+)\)', r'[\1|\2]', text)
+
+    all_blocks = []
+    text, all_blocks = extract_protected_blocks(text, "noformat", all_blocks)
+    text, all_blocks = extract_protected_blocks(text, "code", all_blocks)
+
+    # Convert headers
+    text = re.sub(r'^#\s*(.*?)$', r'h1. \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^##\s*(.*?)$', r'h2. \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^###\s*(.*?)$', r'h3. \1', text, flags=re.MULTILINE)
+
+    # Convert bold and italics
+    text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
+    text = re.sub(r'\*(.*?)\*', r'_\1_', text)
+
+    # Convert inline code and code blocks
+    text = re.sub(r'`(.*?)`', r'{{\1}}', text)
+
+    # Convert lists
+    text = re.sub(r'^-\s*(.*?)$', r'* \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^\d+\.\s*(.*?)$', r'# \1', text, flags=re.MULTILINE)
+
+    text = restore_protected_blocks(text, all_blocks)
+
+    return text
