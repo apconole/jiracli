@@ -2,6 +2,11 @@ from jcli.connector import JiraConnector
 import random
 
 
+class jira_url_holder(object):
+    def __init__(self):
+        self.server_url = 'https://issue.test.com/'
+
+
 class JiraIssueStub(dict):
     def __getattr__(self, attr):
         return self[attr]
@@ -19,6 +24,11 @@ class JiraConnectorStub(JiraConnector):
 
     def __init__(self, config_file=None):
         self._last_jql = ""
+        self.jira = jira_url_holder()
+        self.config = {}
+        self.config['jira'] = {}
+        self.config['jira']['default'] = {}
+        self.config['jira']['default']['markdown'] = True
 
     def setup_add_random_issue():
         issue = JiraIssueStub()

@@ -33,6 +33,7 @@ provided helpful bug reports, suggestions, or additional testing.
 ==========================  =================================================
 Name                        Email
 ==========================  =================================================
+Adrian Moreno               amorenoz@redhat.com
 Eelco Chaudron              echaudro@redhat.com
 Flavio Leitner              fbl@sysclose.org
 Lon Hohberger               lhh@redhat.com

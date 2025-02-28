@@ -285,7 +285,7 @@ def show_cmd(issuekey, raw, width):
                          'psql')
         output += final + "\n\n"
 
-    descr = jobj.get_field(issue, 'description')
+    descr = jobj.jira_text_field_to_md(jobj.get_field(issue, 'description'))
     if 'description' not in excluded and len(descr) > 0:
         output += f"| Description: {' ' * (max_width - 17)} |\n"
         output += f"|{'-' * (max_width - 2)}|\n"
@@ -311,7 +311,8 @@ def show_cmd(issuekey, raw, width):
                 add_ln += "|\n"
             comments_block += add_ln
         comments_block += f"|{'-' * (max_width - 2)}|\n"
-        comments_block += fitted_blocks(comment.body, max_width - 4, "|")
+        comments_block += fitted_blocks(jobj.jira_text_field_to_md(comment.body),
+                                        max_width - 4, "|")
         comments_block += "+" + '-' * (max_width - 2) + "+\n"
 
     if 'comments' not in excluded:
@@ -339,6 +340,7 @@ def add_comment_cmd(issuekey, comment, visibility):
         click.echo("Error: No comment provided.")
         sys.exit(1)
 
+    comment = jobj.md_text_to_jira_text_field(comment)
     jobj.add_comment(issuekey, comment, visibility)
 
 
@@ -387,12 +389,13 @@ def update_comment_cmd(issuekey, comment_id, body, visibility):
     update = {}
     body_text = None
     if body is None:
-        body_text = get_text_via_editor(comment.body)
+        ctext = jobj.jira_text_field_to_md(comment.body)
+        body_text = get_text_via_editor(ctext)
     elif body != "":
         body_text = body
 
     if body_text:
-        update['body'] = body_text
+        update['body'] = jobj.md_text_to_jira_text_field(body_text)
 
     if visibility is not None:
         if visibility.lower() == 'all':
