@@ -3,6 +3,7 @@ import getpass
 from jcli import utils
 from jira import JIRA
 from jira.exceptions import JIRAError
+from jira.resources import User
 from jira.utils import json_loads
 import jira
 import json
@@ -842,12 +843,21 @@ class JiraConnector(object):
 
         return self.jira.create_issue(issue_dict)
 
-    def _find_users(self, searchTerm):
+    def _find_users_by_key(self, key):
+        user = User(self.jira._options, self.jira._session, _query_param='key')
+        user.find(key)
+        return [user]
+
+    def _find_users_by_term(self, searchTerm):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        return [{'displayName': n.displayName, 'key': n.key, 'name': n.name}
-                for n in self.jira.search_users(user=searchTerm)]
+        return self.jira.search_users(user=searchTerm)
+
+    def _find_users(self, term):
+        users = self._find_users_by_term(term)
+        users = users if len(users) else self._find_users_by_key(term)
+        return users
 
     def find_users_by_name(self, named):
         return self._find_users(named)

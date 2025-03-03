@@ -227,11 +227,11 @@ def show_cmd(issuekey, raw, width):
                 output += f"| No Votes{' ' * (max_width - 12)} |\n"
             for vote in issue.raw['fields']['eausm']['votes']:
                 total += int(vote['vote'])
-                user = jobj.find_users_for_name(vote['userId'])
+                user = jobj.find_users_by_name(vote['userId'])
                 if len(user):
                     user = user[0].displayName
                 else:
-                    user = "Unknown?"
+                    user = f"[{vote['userId']}]?"
                 output += f"| Vote: {vote['vote']} by {user} {' ' * (max_width - (15 + len(user) + len(str(vote['vote']))))} |\n"
             output += "|" + '-' * (max_width - 2) + "|\n"
             output += f"| Total: {str(total)} {' ' * (max_width - (len(str(total)) + 12))} |\n"
