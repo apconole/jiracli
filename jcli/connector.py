@@ -236,8 +236,33 @@ class JiraConnector(object):
             raise RuntimeError("Need to log-in first.")
 
         self._ratelimit()
+        if isinstance(comment_id, str) and comment_id == "last":
+            return self.jira.comments(issue_identifier)[-1]
         comment = self.jira.comment(issue_identifier, comment_id)
         return comment
+
+    def in_reply_to_start(self, comment):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if comment is None or not isinstance(comment, jira.resources.Comment):
+            raise ValueError("Comment needs to be a comment type.")
+
+        replyto = "On {{date}}, {{author_name}} writes:"
+        if 'default' in self.config['jira'] and \
+           'replyto' in self.config['jira']['default']:
+            replyto = self.config['jira']['default']['replyto']
+
+        replyto = replyto.replace("{{date}}", f"{comment.updated}")
+        replyto = replyto.replace("{{author_name}}",
+                                  f"{comment.author.displayName}")
+        replyto = replyto.replace("{{author_id}}", f"{comment.author.name}")
+        replyto = replyto.replace("{{comment_id}}", f"{comment.id}")
+
+        if not replyto.endswith("\n"):
+            replyto += "\n"
+
+        return replyto
 
     def add_watcher(self, issue_identifier, watcher):
         if self.jira is None:

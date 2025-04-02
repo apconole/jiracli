@@ -253,6 +253,23 @@ You can set the comment visibility when creating a comment::
 This will set the comment's visibility property to restrict viewing to
 a specific group.
 
+If you are intending to reply to a comment, you can specify the
+`--in-reply-to` option which will generate a short pre-formatted text
+reply::
+
+  $ jcli issues add-comment BUG-123 --in-reply-to 11223344
+  ...
+
+This option cannot be combined with the `--comment` option.  The preamble
+to the reply is set by a default jira config option in your jira config yaml::
+
+  jira:
+    default:
+      replyto: On {{date}}, {{author_name}} writes:
+    ...
+
+This allows substituting date, comment_id, author_name, and author_id.
+
 You can also edit a specific comment with the `update-comment` command::
 
   $ jcli issues update-comment BUG-123 11223344
