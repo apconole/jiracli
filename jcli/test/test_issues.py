@@ -1,5 +1,6 @@
 from click.testing import CliRunner
 from jcli.issues import list_cmd
+from jcli.issues import add_comment_cmd
 from jcli.test.stubs import JiraConnectorStub
 import pytest
 import random
@@ -25,9 +26,9 @@ def test_list_cmd_no_args(cli_runner):
     assert JiraConnectorStub._last_jql == 'assignee = "None" AND status not in ("Closed","Done")'
 
     lines = result.output.split("\n")
-    assert lines[0] == "+----------------+-----------+------------+-------------------------------------------------+----------+------------+"
-    assert lines[1] == "| key            | project   | priority   | summary                                         | status   | assignee   |"
-    assert lines[2] == "|----------------+-----------+------------+-------------------------------------------------+----------+------------|"
+    assert lines[0] == "+----------------+-----------+------------+-------------------------------------------------+-------------+------------+"
+    assert lines[1] == "| key            | project   | priority   | summary                                         | status      | assignee   |"
+    assert lines[2] == "|----------------+-----------+------------+-------------------------------------------------+-------------+------------|"
 
 
 @patch('jcli.connector.JiraConnector', JiraConnectorStub)
@@ -54,3 +55,31 @@ def test_jira_to_md_and_back(cli_runner):
     back = t.md_text_to_jira_text_field(txt)
     print(back)
     assert back == comment_jira
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_reply_to_cmd(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+    s = JiraConnectorStub()
+    for _ in range(random.randint(1, 100)):
+        JiraConnectorStub.setup_add_random_issue()
+
+    for issue in s._query_issues("", 0, 10):
+        s.add_comment(issue["key"], "Test string rand", {})
+
+    for issue in s._query_issues("", 0, 10):
+        result = cli_runner.invoke(add_comment_cmd, [issue['key'],
+                                                     '--comment', 'Something',
+                                                     '--in-reply-to', '12345'])
+        assert result.exit_code == 1
+
+        # get a comment and really try the reply
+        cid = issue.fields.comment.comments[0].id
+
+        with patch("subprocess.run") as mock_run:
+            result = cli_runner.invoke(add_comment_cmd, [issue['key'],
+                                                         '--in-reply-to', cid],
+                                       env={"EDITOR": 'vim'})
+            assert 'vim' == mock_run.call_args_list[0][0][0][0]
+            assert result.stdout_bytes == b'Error: No comment provided.\n'
+            assert result.exit_code == 1

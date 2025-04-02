@@ -321,6 +321,27 @@ def show_cmd(issuekey, raw, width):
     display_via_pager(output, f"Issue: {issuekey}")
 
 
+class IntegerOrStr(click.ParamType):
+    name = "integer or 'last'"
+
+    def __init__(self, valid_words):
+        self.valid_words = valid_words
+
+    def convert(self, value, param, ctx):
+        if isinstance(value, str):
+            if value.lower() in self.valid_words:
+                return value.lower()
+            else:
+                return int(value)
+        elif isinstance(value, int):
+            return value
+
+        self.fail(f"{value!r} should be an integer or {self.valid_words!r}")
+
+
+IN_REPLY_TO = IntegerOrStr(['last'])
+
+
 @click.command(
     name="add-comment"
 )
@@ -329,14 +350,32 @@ def show_cmd(issuekey, raw, width):
               help="The comment text to add.  Defaults to opening an editor.")
 @click.option("--visibility", type=str, default='all',
               help="Sets the group / role for visibility.  Defaults to 'all'.")
-def add_comment_cmd(issuekey, comment, visibility):
+@click.option("--in-reply-to", type=IN_REPLY_TO, default=None,
+              help="Includes a quoted reply from an existing comment.")
+def add_comment_cmd(issuekey, comment, visibility, in_reply_to):
     jobj = connector.JiraConnector()
     jobj.login()
 
-    if comment is None:
-        comment = get_text_via_editor()
+    if comment is not None and in_reply_to is not None:
+        click.echo("Error: Cannot reply with defaulted text.")
+        sys.exit(1)
 
-    if comment is None or len(comment) == 0 or comment.isspace():
+    comment_body = None
+    if in_reply_to:
+        comment_ref = jobj.get_comment(issuekey, in_reply_to)
+        if comment_ref:
+            comment_body = jobj.in_reply_to_start(comment_ref)
+            for line in comment_ref.body.split('\n'):
+                comment_body += "> " + line.strip() + "\n"
+
+            if visibility is None and 'visibility' in comment_ref.raw:
+                visibility = comment_ref.visibility.value
+
+    if comment is None:
+        comment = get_text_via_editor(comment_body)
+
+    if comment is None or len(comment) == 0 or comment.isspace() or \
+       (comment_body and comment == comment_body):
         click.echo("Error: No comment provided.")
         sys.exit(1)
 
