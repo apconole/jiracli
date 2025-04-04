@@ -28,6 +28,7 @@ def server_info_cmd():
     jobj = connector.JiraConnector()
     jobj.login()
 
+    jobj._ratelimit()
     server_info = jobj.jira.server_info()
 
     click.echo(pprint.pformat(server_info))

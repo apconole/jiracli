@@ -11,6 +11,7 @@ import os
 import pathlib
 import pprint
 import re
+import time
 import types
 import yaml
 
@@ -20,6 +21,22 @@ class JiraConnector(object):
         self.config_file = config_file or self._default_config_file()
         self.config = self._load_cfg()
         self.jira = None
+        self.last_call_time = 0  # Store last call timestamp
+
+    def _ratelimit(self):
+        current_time = time.time()
+        elapsed_time = current_time - self.last_call_time
+
+        call_interval = int(self.get_default_str("call_interval", "500"))
+        wait_time = int(self.get_default_str("wait_time", "500"))
+
+        if not call_interval:
+            return
+
+        if (elapsed_time * 1000) < call_interval:
+            time.sleep(wait_time / 1000)
+
+        self.last_call_time = elapsed_time
 
     def _load_cfg(self):
         """Load a config yaml"""
@@ -78,6 +95,7 @@ class JiraConnector(object):
         if self.jira is None:
             self.jira = JIRA(self.config['jira'], basic_auth=(username,
                                                               token))
+            self._ratelimit()
 
     def login(self):
         cached_creds = pathlib.Path(f"/tmp/.{getpass.getuser()}.jirasess")
@@ -118,6 +136,7 @@ class JiraConnector(object):
             raise RuntimeError("Need to log-in first")
 
         try:
+            self._ratelimit()
             result = self.jira.myself()
         except JIRAError as e:
             result = {'key': f"ERROR retrieving information {e}", "name": f"Error: {e}"}
@@ -128,6 +147,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         issues_list = self.jira.search_issues(query, startAt, maxResults)
         return issues_list
 
@@ -136,6 +156,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         # Check if the issue_identifier is a numeric string (ID) or an
         # alphanumeric string (key)
         if issue_identifier.isdigit():
@@ -151,6 +172,8 @@ class JiraConnector(object):
             # Check for the EZ Agile Planning Poker ext on the server
             EAUSM_url = self.jira.server_url + \
                 f"/rest/eausm/latest/planningPoker/{issue.id}"
+
+            self._ratelimit()
             r = self.jira._session.get(EAUSM_url)
             try:
                 EAUSM_json = json_loads(r)
@@ -167,6 +190,8 @@ class JiraConnector(object):
 
         state_names = []
         issue = self.get_issue(issue_identifier)
+
+        self._ratelimit()
         transitions = self.jira.transitions(issue)
 
         state_names = [t['to']['name'] for t in transitions]
@@ -179,6 +204,7 @@ class JiraConnector(object):
         if isinstance(issue, str):
             issue = self.get_issue(issue)
 
+        self._ratelimit()
         self.jira.transition_issue(issue, transition=status)
 
     def issue_url(self, issue_identifier) -> str:
@@ -202,12 +228,14 @@ class JiraConnector(object):
             visibility = None
 
         if issue is not None:
+            self._ratelimit()
             self.jira.add_comment(issue, comment_body, visibility)
 
     def get_comment(self, issue_identifier, comment_id):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         comment = self.jira.comment(issue_identifier, comment_id)
         return comment
 
@@ -217,6 +245,7 @@ class JiraConnector(object):
 
         issue = self.get_issue(issue_identifier)
         if issue is not None:
+            self._ratelimit()
             self.jira.add_watcher(issue, watcher)
 
     def del_watcher(self, issue_identifier, watcher):
@@ -225,6 +254,7 @@ class JiraConnector(object):
 
         issue = self.get_issue(issue_identifier)
         if issue is not None:
+            self._ratelimit()
             self.jira.remove_watcher(issue, watcher)
 
     def _order_by_from_string(self, order_by_string) -> str:
@@ -323,12 +353,19 @@ class JiraConnector(object):
 
         return " AND ".join(query_parts) + order_by
 
+    def _jira_fields(self):
+        if not hasattr(self, "_fields"):
+            self._ratelimit()
+            self._fields = self.jira.fields()
+
+        return self._fields
+
     def _fetch_custom_fields(self) -> dict:
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
         if not hasattr(self, "_custom_field_mapping"):
-            custom_fields = self.jira.fields()
+            custom_fields = self._jira_fields()
             self._custom_field_mapping = {field['id']: field['name']
                                           for field in custom_fields if field['custom']}
 
@@ -451,6 +488,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         return self.jira.search_users(user=name)
 
     def convert_to_jira_type(self, var_instance, value):
@@ -488,6 +526,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         projects = [p for p in self.jira.projects()
                     if p.name == project or p.key == project]
         if len(projects) != 1:
@@ -504,6 +543,7 @@ class JiraConnector(object):
                 issue_type = self.jira.issue_type_by_name(issue_type)
             except jira.exceptions.JIRAError:
                 raise ValueError(f"Couldn't determine issue type for \"{issue_type}\"")
+        self._ratelimit()
         full_fields = self.jira.project_issue_fields(project, issue_type.id)
         return [f.name for f in full_fields]
 
@@ -536,6 +576,7 @@ class JiraConnector(object):
                     val = eval(val)
                 issue_dict = {field: val}
 
+        self._ratelimit()
         issue.update(issue_dict)
 
     def object_convert(self, field_value):
@@ -594,7 +635,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        custom_fields = self.jira.fields()
+        custom_fields = self._jira_fields()
         field_type_mapping = {field['id']: field['schema']['type']
                               for field in custom_fields if field['custom']}
         field_type_mapping["assignee"] = "user"
@@ -651,6 +692,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         if limit > 0:
             return self.jira.boards(0, limit)
 
@@ -660,6 +702,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         return self.jira.boards(name=boardname)
 
     def fetch_sprints_by_board(self, board) -> list:
@@ -683,6 +726,7 @@ class JiraConnector(object):
             board = found
 
         try:
+            self._ratelimit()
             sprints = self.jira.sprints(board.raw['id'])
         except JIRAError:
             # not all boards support sprints, so ignore it
@@ -712,6 +756,7 @@ class JiraConnector(object):
 
         # Got the board ID - let's get the REST details
         # Don't look at this too long .. it will make you sad.
+        self._ratelimit()
         cfg = self.jira.find(f"../../agile/1.0/board/{board.raw['id']}/configuration")
         return cfg
 
@@ -725,6 +770,7 @@ class JiraConnector(object):
         # without a proper pythonic API and decode it manually to get the
         # correct JQL.
         r = self._fetch_board_config_object(board)
+        self._ratelimit()
         f = self.jira.filter(r.filter)
         # let's check if the query includes closed issues:
         query = f.jql
@@ -745,6 +791,7 @@ class JiraConnector(object):
     def fetch_sprints_for_board(self, board, states=None) -> dict:
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
+        self._ratelimit()
         result = self.jira.sprints(board, None, 0, 50, states)
         return result
 
@@ -766,6 +813,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
         r = self._fetch_board_config_object(board)
+        self._ratelimit()
         f = self.jira.filter(r.filter)
 
         return f.jql
@@ -793,6 +841,7 @@ class JiraConnector(object):
         # Boards are a total hack, and this is also sad.
         # Rather than a direct link somewhere to quickfilters, we need to
         # use the greenhopper endpoint to find the quickfilter config
+        self._ratelimit()
         cfg = self.jira.find(f"../../greenhopper/1.0/rapidviewconfig/editmodel.json?rapidViewId={board.raw['id']}")
         if 'quickFilterConfig' in cfg.raw:
             return cfg.quickFilterConfig
@@ -830,6 +879,7 @@ class JiraConnector(object):
         if not fid:
             raise ValueError(f"Unknown query: {filter}")
 
+        self._ratelimit()
         # Now query issues by the most absurd interface:
         resp = self.jira.find(f"../../greenhopper/1.0/xboard/work/allData.json?rapidViewId={board.raw['id']}&activeQuickFilters={fid}")
 
@@ -846,6 +896,7 @@ class JiraConnector(object):
 
     def _find_users_by_key(self, key):
         user = User(self.jira._options, self.jira._session, _query_param='key')
+        self._ratelimit()
         user.find(key)
         return [user]
 
@@ -853,6 +904,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         return self.jira.search_users(user=searchTerm)
 
     def _find_users(self, term):
@@ -873,19 +925,23 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         return self.jira.groups()
 
     def _components(self, project):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         return self.jira.project(project).components
 
     def fetch_attachment(self, attachmentid, target):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         attachment = self.jira.attachment(attachmentid)
+        self._ratelimit()
         data = attachment.get()
         with open(target, 'wb') as f:
             f.write(data)
@@ -894,6 +950,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
+        self._ratelimit()
         self.jira.add_attachment(issue.id, attachment_file, name)
 
     def add_issue_link(self, issue, target, title=None, link_type=None, isinward=False):
@@ -902,6 +959,7 @@ class JiraConnector(object):
 
         if not target.startswith("http://") and not target.startswith("https://"):
             tgtcheck = self.get_issue(target)
+            self._ratelimit()
             link_types = self.jira.issue_link_types()
             if tgtcheck is None:
                 raise ValueError(
@@ -916,11 +974,13 @@ class JiraConnector(object):
             if title:
                 comment = {"body": title}
 
+            self._ratelimit()
             self.jira.create_issue_link(link_type, inwardissue, outwardissue, comment)
         else:
             if not title:
                 title = target
             link = {"url": target, "title": title}
+            self._ratelimit()
             self.jira.add_simple_link(issue, link)
 
     def eausm_vote_issue(self, issue, vote):
@@ -939,6 +999,7 @@ class JiraConnector(object):
         if 'eausm' not in self.config['jira'] or \
            bool(self.config['jira']['eausm']):
             payload = {"issueId": issue.id, "vote": vote}
+            self._ratelimit()
             self.jira._session.put(EAUSM_url, data=json.dumps(payload))
         else:
             raise RuntimeError("Voting by this client is disabled - check your jira yml.")

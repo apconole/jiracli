@@ -256,8 +256,10 @@ def show_cmd(issuekey, raw, width):
                 output += link_text + ' ' * (max_width - (len(link_text) + 1))
                 output += "|\n"
 
+        jobj._ratelimit()
         remote_links = jobj.jira.remote_links(issue.key)
         for link_id in remote_links:
+            jobj._ratelimit()
             link = jobj.jira.remote_link(issuekey, link_id)
             if hasattr(link, "object"):
                 url = ""
@@ -837,6 +839,7 @@ def get_link_type_choices():
     except:
         return []
 
+    jobj._ratelimit()
     return [x.name for x in jobj.jira.issue_link_types()]
 
 
@@ -873,6 +876,7 @@ def add_link_cmd(issuekey, url, title, relationship_type, link_type):
 
     if issue.fields.issuelinks is not None and \
        len(issue.fields.issuelinks) > 0:
+        jobj._ratelimit()
         links = issue.fields.issuelinks if link_type == 'issue' else \
             jobj.jira.remote_links(issue.key)
         found = False
