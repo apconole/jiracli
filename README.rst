@@ -98,6 +98,29 @@ By default, all of the fields above are included in the issue
 display, so you will require changes to the yaml file in order
 to disable them.
 
+JIRA Ratelimiting
+-----------------
+
+When working with some JIRA servers it may be necessary to keep the
+number of requests per second limited.  While the python JIRA client
+handles an exponential backoff in the case that the server returns an
+unavailable error, the `jiracli` can limit server round trips as well.
+
+The configuration for this is found in the default section of the yaml
+file::
+
+  jira:
+    default:
+      call_interval: time_in_ms
+      wait_time: time_in_ms
+
+The ``call_interval`` setting will be the minimum time between calls
+measured in milliseconds to allow.  The default value is `500`.  A
+value of `0` will disable the ratelimiting feature.
+
+The ``wait_time`` setting will be the time to sleep when we need to
+ratelimit (specified in ms).  The default value is `500`.
+
 Interfacing with issues
 -----------------------
 
