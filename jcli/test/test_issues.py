@@ -4,6 +4,7 @@ from jcli.issues import add_comment_cmd
 from jcli.test.stubs import JiraConnectorStub
 import pytest
 import random
+import re
 from unittest.mock import patch
 
 
@@ -44,17 +45,61 @@ def test_list_cmd_with_assignee(cli_runner):
 
 @patch('jcli.connector.JiraConnector', JiraConnectorStub)
 def test_jira_to_md_and_back(cli_runner):
-    comment_jira = "In comment foo at [this|https://issue.test.com/browse/PROJMAIN-123?focusedId=12345678&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-12345678], we see that there is a problem.\nh1. Define the problem:\n* Put your right foot in.\n* Put your right foot out.\n* Notice that [~a@a.com] did not do the hokey pokey before turning about.\nThe spec requires that\n{noformat}\nDoing the hokey pokey always preceeds turning yourself about.\nThis is not an optional prerequisite.\n{noformat}\nLooking at the code, we see::\n{code:java}\nif (hokey)\n    self.turn_about()\n{code}\nHowever, the hokey flag never seems to have gotten cleared.\nI pulled the details from [here|https://www.example.com/hokey-pokey-spec/2025/01/01/spec.txt] and the pdf [here|ftp://www.example.com/hokey-pokey-spec/2025/01/01/spec.pdf]"
-    md_ref = "In comment foo at [this](PROJMAIN-123#12345678), we see that there is a problem.\n# Define the problem:\n- Put your right foot in.\n- Put your right foot out.\n- Notice that [~a@a.com] did not do the hokey pokey before turning about.\nThe spec requires that\n> Doing the hokey pokey always preceeds turning yourself about.\n> This is not an optional prerequisite.\nLooking at the code, we see::\n```java\nif (hokey)\n    self.turn_about()\n\n```\nHowever, the hokey flag never seems to have gotten cleared.\nI pulled the details from [here](https://www.example.com/hokey-pokey-spec/2025/01/01/spec.txt) and the pdf [here](ftp://www.example.com/hokey-pokey-spec/2025/01/01/spec.pdf)"
+
+    comment_jira = """
+In comment foo at [this|https://issue.test.com/browse/PROJMAIN-123?focusedId=12345678&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-12345678], we see that there is a problem.
+h1. Define the problem:
+* Put your right foot in.
+* Put your right foot out.
+* Notice that [~a@a.com] did not do the hokey pokey before turning about.
+The spec requires that
+{noformat}
+Doing the hokey pokey always preceeds turning yourself about.
+
+This is not an optional prerequisite.
+{noformat}
+Looking at the code, we see::
+{code:java}
+if (hokey)
+    self.turn_about()
+{code}
+However, the hokey flag never seems to have gotten cleared.
+I pulled the details from [here|https://www.example.com/hokey-pokey-spec/2025/01/01/spec.txt] and the pdf [here|ftp://www.example.com/hokey-pokey-spec/2025/01/01/spec.pdf]
+"""
+
+    md_ref = """
+In comment foo at [this](PROJMAIN-123#12345678), we see that there is a problem.
+# Define the problem:
+- Put your right foot in.
+- Put your right foot out.
+- Notice that [~a@a.com] did not do the hokey pokey before turning about.
+The spec requires that
+> Doing the hokey pokey always preceeds turning yourself about.
+> 
+> This is not an optional prerequisite.
+Looking at the code, we see::
+```java
+if (hokey)
+    self.turn_about()
+
+```
+However, the hokey flag never seems to have gotten cleared.
+I pulled the details from [here](https://www.example.com/hokey-pokey-spec/2025/01/01/spec.txt) and the pdf [here](ftp://www.example.com/hokey-pokey-spec/2025/01/01/spec.pdf)
+"""
 
     t = JiraConnectorStub()
 
     txt = t.jira_text_field_to_md(comment_jira)
-    assert txt == md_ref
+    print(txt)
+    assert re.sub(r"^> $", ">", txt, flags=re.MULTILINE) == re.sub(
+        r"^> $", ">", md_ref, flags=re.MULTILINE
+    )
 
     back = t.md_text_to_jira_text_field(txt)
     print(back)
-    assert back == comment_jira
+    assert re.sub(r"^> $", ">", back, flags=re.MULTILINE) == re.sub(
+        r"^> $", ">", comment_jira, flags=re.MULTILINE
+    )
 
 
 @patch('jcli.connector.JiraConnector', JiraConnectorStub)
