@@ -227,7 +227,7 @@ def md_to_jira(text):
     # modifying them
 
     # Convert Markdown blockquotes (`> `) to Jira `{noformat}`
-    blockquote_pattern = re.compile(r'(^> .+(?:\n> .+)*)', re.MULTILINE)
+    blockquote_pattern = re.compile(r'(^> .+(?:\n>(?:(?: .*)|$))*)', re.MULTILINE)
     text = blockquote_pattern.sub(
         lambda m: "{noformat}\n" + "\n".join(line.lstrip("> ") for line in m.group(1).splitlines()) + "\n{noformat}",
         text

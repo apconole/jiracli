@@ -23,6 +23,7 @@ appearing in this code base.
 Name                        Email
 ==========================  =================================================
 Aaron Conole                aconole@redhat.com
+Adrian Moreno               amorenoz@redhat.com
 Chris Van Hoof              vanhoof@ouwish.com
 Mark Michelson              mmichels@redhat.com
 ==========================  =================================================
