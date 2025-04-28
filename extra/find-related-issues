@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# find-related-issues - script to find issues that may be related to the current
+# issue (passed as argv[1])
+
+set -euo pipefail
+
+ignore_words=("a" "as" "an" "the" "in" "on" "at" "and" "but" "or" "I" "i" "he" "she" "they" "them" "is" "are" "was" "were" "be" "being" "been")
+
+template_file=""
+dry_flag=no
+done=no
+while [ "$done" != "yes" ]; do
+      if echo "$1" | grep -q -s -E ^--ignore-word= ; then
+         ignore=$(echo "$1" | sed 's@--ignore-word=@@')
+         ignore_words+=("${ignore}")
+      elif echo "$1" | grep -q -s -E ^--issue= ; then
+         issue=$(echo "$1" | sed 's@--issue=@@')
+      elif echo "$1" | grep -q -s -E '^[a-zA-Z0-9]+' ; then
+         issue="$1"
+      elif echo "$1" | grep -q -s -E '^--dry' ; then
+         dry_flag=yes
+      elif echo "$1" | grep -q -s -E '^--template=' ; then
+         template_file=$(echo "$1" | sed 's@--template=@@')
+      elif echo "$1" | grep -q -s -E '^--help' ; then
+         echo "$0: Simple query for related issues."
+         echo ""
+         echo "USAGE:"
+         echo "$0 [..options..] <ISSUE|--issue=ISSUE>"
+         echo "$0 uses issue links, and words from the summary to try and find"
+         echo "related issues to the issue passed in."
+         echo ""
+         echo "EXAMPLES:"
+         echo "$0 --dry ABC-123"
+         echo "$0 --ignore-word=ABC ABC-123"
+         echo "$0 --ignore-word=ABC --ignore-word=XYZ --issue=ABC-123"
+         echo ""
+         echo "OPTIONS:"
+         echo "--dry		Only spit out the jql.  Don't run jcli."
+         echo "--help		This help message"
+         echo "--ignore-word=	Pass a word to the engine to ignore"
+         echo "--issue=		Set the issue to search"
+         exit 0
+      elif echo "$1" | grep -q -s -E ^-- ; then
+         echo "Unknown option: $1"
+         exit 1
+      fi
+      shift
+      if [ "$#" -lt "1" ]; then
+         done=yes
+      fi
+done
+
+if [ "X$issue" == "X" ]; then
+   echo "Missing issue id."
+   echo "$0: $0 <issue>"
+   exit 1
+fi
+
+# get the issue details
+ISSUE_DETAILS=$(jcli issues show --raw --json $issue)
+
+# important vars
+PROJECT=$(echo $ISSUE_DETAILS | jq -rc '.[0].fields.project.key')
+COMPONENTS=$(echo $ISSUE_DETAILS | jq -rc '.[0].fields.components[].name')
+SUMMARY=$(echo $ISSUE_DETAILS | jq -rc '.[0].fields.summary')
+
+# basic issue links
+JQLS=("issue in linkedIssues(${issue}, \"is related to\")")
+JQLS+=("issue in linkedIssues(${issue}, \"is duplicated by\")")
+
+# Generate a list of JQLs for each summary word
+for summary_word in ${SUMMARY}; do
+  if ! [[ " ${ignore_words[@]} " =~ " $summary_word " ]]; then
+    JQLS+=("project = $PROJECT and component = ${COMPONENTS} and (summary ~ '${summary_word}' or description ~ '${summary_word}')")
+  fi
+done
+
+if [ "$dry_flag" != "yes" -a "X$template_file" == "X" ]; then
+   echo "{\"results\": ["
+fi
+queries=0
+for jql in "${JQLS[@]}"; do
+   if [ "$dry_flag" != "yes" ]; then
+      queries=$((queries+1))
+      if [ "X$template_file" == "X" ]; then
+          ISSUES=$(jcli issues list --jql "${jql}" --output json)
+          if ! echo "$ISSUES" | grep -q -s "\"issues_count\":0" ; then
+              echo "$ISSUES,"
+          fi
+      else
+          ISSUES=$(jcli issues list --jql "${jql}" --output template --template-file="${template_file}")
+          echo "$ISSUES"
+      fi
+   else
+      echo "Skipping: 'jcli issues list --jql \"${jql}\" --output json'"
+   fi
+done
+if [ "$dry_flag" != "yes" -a "X$template_file" == "X" ]; then
+   echo "{\"queries\": ${queries}}]}"
+fi

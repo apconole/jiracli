@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# summarize-issue - send JIRA issue JSON from stdin to a local LLM and
+# print the summary
+
+set -euo pipefail
+
+LLM_URL="${LLM_URL:-http://localhost:8000/generate}"
+
+# Read stdin into a variable
+input=$(cat)
+
+# Extract fields using jq
+summary=$(echo "$input" | jq -r '.[0].fields.summary // ""')
+description=$(echo "$input" | jq -r '.[0].fields.description // ""')
+comments=$(echo "$input" | jq -r '.[0].fields.comment.comments[] | "\(.author.displayName) writes:\n- \(.body // empty)"' | sed 's/^/- /')
+
+# Assemble the prompt
+prompt=$(cat <<EOF
+Summarize the current status of this issue:
+
+Title:
+$summary
+
+Description:
+$description
+
+Comments:
+$comments
+EOF
+)
+
+# Send the prompt to the LLM server
+response=$(curl -sS -X POST "$LLM_URL" \
+    -H "Content-Type: application/json" \
+    -d @- <<EOF
+{
+  "prompt": $(jq -Rs <<<"$prompt"),
+  "temperature": 0.2,
+  "max_tokens": 500
+}
+EOF
+)
+
+# Print the LLM's response (assumes JSON with "response" field)
+# Use a default here because we don't allow unbound variables
+if [ "${1:-}" != "--no-pretty" ]; then
+    RESULT=$(echo "$response" | jq -rc ".response")
+    ERROR=$(echo "$response" | jq -rc ".error")
+
+    echo "Okay, here is a summary for the issue:"
+
+    if [ "${ERROR}" != "null" ]; then
+        echo "Oops, there was an error:"
+        echo "$ERROR"
+        exit 1
+    fi
+
+    echo "$RESULT"
+else
+    echo "$response"
+fi

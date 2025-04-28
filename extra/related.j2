@@ -1,0 +1,14 @@
+{% for rel in issues %}
+## {{ rel.key }} - {{ rel.fields.summary }}
+- Status: {{ rel.fields.status.name }}
+- Assignee: {{ rel.fields.assignee.displayName if rel.fields.assignee else "Unassigned" }}
+- Labels: {{ rel.fields.labels | join(", ") }}
+- Updated: {{ rel.fields.updated }}
+
+{% if rel.fields.comment.comments %}
+### Comments:
+{% for comment in rel.fields.comment.comments %}
+   - On {{ comment.updated }}, {{comment.author.displayName}} writes: {{ comment.body | replace("\n", " ") }}
+{% endfor %}
+{% endif %}
+{% endfor %}
