@@ -1,5 +1,6 @@
 import click
 import csv
+import json as JSON
 import logging
 import os
 import pprint
@@ -153,7 +154,9 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
               help="Dump the issue details in 'raw' form.")
 @click.option("--width", type=int, default=0,
               help="Use a set width for display.  Default of '0' will set the display based on the terminal width.")
-def show_cmd(issuekey, raw, width):
+@click.option("--json", is_flag=True, default=False,
+              help="Dump the issue details in json compatible form.")
+def show_cmd(issuekey, raw, width, json):
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -164,8 +167,18 @@ def show_cmd(issuekey, raw, width):
         return
 
     if raw is True:
-        click.echo(pprint.pprint(vars(issue)))
-        click.echo(jobj._fetch_custom_fields())
+        if not json:
+            click.echo(pprint.pprint(vars(issue)))
+            click.echo(jobj._fetch_custom_fields())
+        else:
+            click.echo('[')
+            click.echo(JSON.dumps(issue.raw))
+            click.echo(',')
+            click.echo(JSON.dumps(jobj._fetch_custom_fields()))
+            click.echo(']')
+        return
+    elif json is True:
+        click.echo("Cannot use 'json' without 'raw'")
         return
 
     # Get terminal width and adjust max width
