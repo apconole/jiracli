@@ -267,3 +267,18 @@ def md_to_jira(text):
     text = restore_protected_blocks(text, all_blocks)
 
     return text
+
+
+@click.command(name="convert")
+@click.argument("input", type=click.File('r'))
+@click.option("--to", type=click.Choice(['jira', 'md']),
+              default='md',
+              help="The expected conversion type (if md, input should be jira)")
+def convert_cmd(input, to):
+    data = input.read()
+    if to == "jira":
+        click.echo(md_to_jira(data))
+    elif to == "md":
+        click.echo(jira_to_md(data))
+    else:
+        raise RuntimeError(f"Bad conversion {to}")

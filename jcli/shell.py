@@ -10,6 +10,7 @@ from jcli import details as details_cmds
 from jcli import issues as issues_cmds
 from jcli import myself as my_cmds
 from jcli import users as users_cmds
+from jcli import utils as utils_cmds
 
 
 @click.group()
@@ -61,6 +62,13 @@ def users():
     pass
 
 
+@cli.group()
+def utils():
+    """
+    Generic related utilities.
+    """
+
+
 cli.add_command(my_cmds.login_cmd)
 cli.add_command(my_cmds.myself_cmd)
 
@@ -94,6 +102,8 @@ boards.add_command(boards_cmds.get_config_cmd)
 boards.add_command(boards_cmds.sprints_cmd)
 
 users.add_command(users_cmds.users_find_cmd)
+
+utils.add_command(utils_cmds.convert_cmd)
 
 # Add a shell-cmd option when click-shell is installed
 try:
