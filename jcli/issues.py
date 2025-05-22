@@ -770,7 +770,7 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
 
     if project != "Default Project" and show_fields:
         # Try to pull the default fields for project and bug type
-        special_lines += "# Assignable fields below:\n"
+        special_lines += "\n# Assignable fields below:\n"
 
         for f in jobj.get_project_default_types(project, issue_type):
             f = '"' + f + '"'
