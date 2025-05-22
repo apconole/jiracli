@@ -682,6 +682,7 @@ def issue_extract_blocks(issue_block):
 @click.command(
     name='create'
 )
+@click.pass_context
 @click.option("--summary", type=str, default=None,
               help="The summary for the issue.  Default is to use the text editor interpretation.")
 @click.option("--description", type=str, default=None,
@@ -708,10 +709,14 @@ def issue_extract_blocks(issue_block):
               " issue type.  Must specify valid values for both on the command line.")
 @click.option("--dry-run", is_flag=True, default=False,
               help="Do not actually commit the issue.")
-def create_issue_cmd(summary, description, project, issue_type, set_field,
+def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
                      from_file, commit, oneline, verbose, show_fields, dry_run):
-    jobj = connector.JiraConnector()
-    jobj.login()
+    if 'jobj' not in ctx.obj:
+        jobj = connector.JiraConnector()
+        jobj.login()
+        ctx.obj['jobj'] = jobj
+    else:
+        jobj = ctx.obj['jobj']
 
     filled_all = all((summary, description, project))
     special_lines = None

@@ -917,7 +917,9 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        return self.jira.create_issue(issue_dict)
+        result = self.jira.create_issue(issue_dict)
+        self.last_issue = result
+        return result
 
     def _find_users_by_key(self, key):
         user = User(self.jira._options, self.jira._session, _query_param='key')
