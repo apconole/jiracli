@@ -8,6 +8,7 @@ import re
 import shutil
 import sys
 
+from click.core import ParameterSource
 from jcli import connector
 from jcli.utils import display_via_pager
 from jcli.utils import fitted_blocks
@@ -383,7 +384,8 @@ def add_comment_cmd(issuekey, comment, visibility, in_reply_to):
             for line in comment_ref.body.split('\n'):
                 comment_body += "> " + line.strip() + "\n"
 
-            if visibility is None and 'visibility' in comment_ref.raw:
+            if click.get_current_context().get_parameter_source('visibility') \
+               == ParameterSource.DEFAULT and 'visibility' in comment_ref.raw:
                 visibility = comment_ref.visibility.value
 
     if comment is None:
