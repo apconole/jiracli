@@ -19,6 +19,7 @@ from jcli.utils import issue_eval
 from jcli.utils import str_containing
 from jcli.utils import str_contained
 from jcli.utils import trim_text
+from jcli.utils import RuntimeEvalChoice
 from tabulate import tabulate
 
 LOG = logging.getLogger(__name__)
@@ -914,8 +915,8 @@ def get_link_type_choices():
               default='outward',
               help="Add a link to the issue.")
 @click.option("--link-type",
-              type=click.Choice(get_link_type_choices(),
-                                case_sensitive=False),
+              type=RuntimeEvalChoice(get_link_type_choices,
+                                     case_sensitive=False),
               help="Set a relationship.")
 def add_link_cmd(issuekey, url, title, relationship_type, link_type):
     """Adds a new link to URL to the issue at ISSUEKEY.
