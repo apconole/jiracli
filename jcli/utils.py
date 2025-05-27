@@ -282,3 +282,35 @@ def convert_cmd(input, to):
         click.echo(jira_to_md(data))
     else:
         raise RuntimeError(f"Bad conversion {to}")
+
+
+class RuntimeEvalChoice(click.Choice):
+    def __init__(self, choices_getter, **kwargs):
+        self._choice_get = choices_getter
+        self._requested = False
+        super().__init__([], **kwargs)
+
+    def ensure_requested(self):
+        if not self._requested:
+            self.choices = self._choice_get()
+            self._requested = True
+
+    def convert(self, **kwargs):
+        self.ensure_requested()
+        return super().convert(**kwargs)
+
+    def shell_complete(self, **kwargs):
+        self.ensure_requested()
+        return super().shell_complete(**kwargs)
+
+    def __repr__(self):
+        self.ensure_requested()
+        return f"RuntimeEvalChoice({list(self.choices)})"
+
+    def get_metavar(self, self2, **kwargs):
+        self.ensure_requested()
+        choices_str = "|".join(
+            [str(i) for i in self.choices]
+        )
+
+        return f"[{choices_str}]"
