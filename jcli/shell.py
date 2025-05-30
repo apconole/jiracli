@@ -19,10 +19,13 @@ from jcli import utils as utils_cmds
 @click.option('--config', metavar="CONFIG", envvar="JCLI_YAML",
               help="Location of jira yaml configuration.  Defaults to "
               "'~/.jira.yml'")
+@click.pass_context
 @click.version_option()
-def cli(debug, config):
+def cli(ctx, debug, config):
     """Tools for interacting / authenticating with jira
     """
+    ctx.ensure_object(dict)
+
     if debug:
         logging.basicConfig(
             level=logging.DEBUG,

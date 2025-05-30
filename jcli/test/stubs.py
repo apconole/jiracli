@@ -174,6 +174,15 @@ class JiraConnectorStub(JiraConnector):
     def _fetch_field_type_mapping(self):
         pass
 
+    def create_issue(self, issue_dict):
+        print("Including an issue.")
+        if 'summary' not in issue_dict or \
+           'description' not in issue_dict or \
+           'issuetype' not in issue_dict or \
+           'project' not in issue_dict:
+            raise ValueError("Missing required elements")
+        return 'ISSUE-abc'
+
     def add_comment(self, issue_identifier, comment_body, visibility):
         for issue in JiraConnectorStub._issues_list:
             if issue['key'] == issue_identifier:

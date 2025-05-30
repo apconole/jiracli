@@ -1,6 +1,7 @@
 from click.testing import CliRunner
 from jcli.issues import list_cmd
 from jcli.issues import add_comment_cmd
+from jcli.issues import create_issue_cmd
 from jcli.test.stubs import JiraConnectorStub
 import pytest
 import random
@@ -128,3 +129,24 @@ def test_reply_to_cmd(cli_runner):
             assert 'vim' == mock_run.call_args_list[0][0][0][0]
             assert result.stdout_bytes == b'Error: No comment provided.\n'
             assert result.exit_code == 1
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_issue_create(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+
+    result = cli_runner.invoke(create_issue_cmd, obj={})
+    assert result.exit_code == 1
+    assert "Please fill in project, summary, and description." in result.output
+
+    issue_summary = "Testing an issue create"
+    issue_description = "Describe an issue here.  This can be multiline."
+    issue_project = "ABC"
+
+    result = cli_runner.invoke(create_issue_cmd,
+                               ['--summary', issue_summary,
+                                '--description', issue_description,
+                                '--project', issue_project,
+                                '--issue-type', 'Bug'], obj={})
+    assert result.exit_code == 0
+    assert "done - Result: " in result.output
