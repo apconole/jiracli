@@ -1,6 +1,70 @@
 CHANGES
 =======
 
+* issues: Use the RuntimeEvalChoice for link-types
+* issues: fix the create call
+* issues: fix visibility inheritance in replies
+* AUTHORS: Add Marcelo Leitner as a contributor
+* issues create: add new line to get proper formatting
+* issues create: allow using a jobj from the context
+* utils: Add a convert command
+* issues: Allow 'raw' to also output in 'json' form
+* markdown: support multiline quotes
+* comments: Add a reply-to method
+* jira: ratelimit requests to the server
+* comments: Incorporate JIRA->md->JIRA support
+* eausm: Retry looking up users from the planning poker tool
+* issues: Handle case where there is no jira yml
+* boards: Fix indentation issue
+* sprints: Add additional display options
+* issues: Include link details when printing links
+* links: Add the ability to create issue links
+* boards: Accept sprints that are missing dates
+* boards: Display the board ID when showing sprint boards
+* issues: Allow forcing a value
+* connector: Fix the complex field type setter
+* eausm: Add the ability to push a vote into the Planning Poker
+* issues: Add support for EAUSM Planning Poker tool
+* connector: common way to set complex types
+* connector: Add support for the PropertyHolder resource type
+* boards: Add a sprint display
+* connector: Allow 'array' to push objects
+* AUTHORS: Add Marcelo's name to the list
+* issues: Add the reporter to the display
+* issues: Display the group associated with a comment
+* connector: Fix comment addition
+* issues: Add support for editing comments
+* issues: enable/disable display of built-in fields
+* issues: Include links in display
+* issues: Add a field getter
+* attachments: support display, pull, push
+* issues: Add / del watchers from issues
+* boards: Try to cycle through names
+* connector: Fix a flake8 complaint
+* connector: Fix additional args processing
+* issues: Add sorting option
+* connector: Convert from 'None' instance
+* details: Add information on groups and components
+* connector: Simple handling of array types
+* connector: Include missing function for creating issues
+* issues: Allow setting fields from the command line
+* issues: support key-value pairs in csv imports
+* users: Add a utility to search existing users
+* spelling: Fix some minor spelling issues
+* readme: Document the issue creation process
+* issues: Add the ability to pull git details from a repository
+* issues: Include a way to get all the fields for setting
+* issues: Add a creation routine for creating issues
+* connector: Handle 'assignee' for bare field setting
+* connector: Add default config getter
+* utils: Add a function to do a multi-string contain check
+* utils: Allow fetching text with a specific default
+* issues: Include the author name and comment ID
+* connector: Populate the name field
+* boards: Move to bare string from f-string
+* display: Set terminal title
+* utils: Simplify fitted text, and handle tabs
+* release: Send out 0.0.2 for release
 * details: Add some basic server related information
 * test: Add a pytest infrastructure
 * connector: Handle cases of malformed 'field' entries in the yaml
