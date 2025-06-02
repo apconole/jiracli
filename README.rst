@@ -210,6 +210,65 @@ The JSON output has the following fields::
   .issues : <list>
   .field_maps : <dict>
 
+Reports
+-------
+
+Many times, the `list` command is meant for more than just a quick at-a-glance
+display.  In order make the `list` command more useful, it supports an optional
+reporting mechanism.  Reporting allows for specific criteria from the issues to
+sort them, and allows grouping those issues into named buckets.
+
+For example, assume there is a field called ``crashed`` and it can have the
+values *yes* and *no*.  We can create a report by first modifying our jira
+yaml to have::
+
+  jira:
+     ...
+     reporting:
+        filters:
+           "Crashes to check":
+             match:
+                crashed: "yes"
+
+When we run `jcli issues list --output=report` we would see something like::
+
+  $ jcli issues list --output=report
+  Crashes to check issues
+  ====================
+  * ABC-122         Error when the switch is flipped
+
+This can be used to make complex filters by using ``or`` matches and
+selecting multiple fields.  For example, say we have ``crashed``,
+``reset``, and ``hung`` fields.  Each could be *yes* or *no*.  Now we
+can make a priority filter like::
+
+  reporting:
+     filters:
+        "High Priority":
+           or:
+              - match:
+                  crashed: "yes"
+              - match:
+                  reset: "yes"
+              - match:
+                  hung: "yes"
+
+And now our display might look like::
+
+  $ jcli issues list --output=report
+  High Priority issues
+  ====================
+  * ABC-122         Error when the switch is flipped
+  * ABC-145         Rebooted after loud noises
+  * BUG-321         A normal bug
+
+The system can support multiple groups.  Each group is evaluated in the order
+it appears in the yaml file, and an issue can only appear on one group (the
+first matching group).
+
+Finally, the issues can be sorted according to a scoring system.  That can be
+defined by setting weights on individual fields and values.
+
 Display
 -------
 

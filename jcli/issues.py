@@ -47,7 +47,8 @@ ISSUE_DETAILS_MAP = {
               help="Whether to include closed issues (default is False).")
 @click.option("--summary-len", 'len_', type=int, default=45,
               help="Trim the summary length to certain number of chars (45 default, 0 for no trim)")
-@click.option('--output', type=click.Choice(['table', 'csv', 'simple', 'json']),
+@click.option('--output', type=click.Choice(['table', 'csv', 'simple', 'json',
+                                             'report']),
               default='table',
               help="Output format (default is 'table')")
 @click.option("--matching-eq", multiple=True, nargs=2, help="Custom JQL pair")
@@ -151,6 +152,29 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
             final += f'"issues":[{",".join([JSON.dumps(issue.raw) for issue in issues])}],\n'
             final += f'"field_maps":{JSON.dumps(jobj._fetch_custom_fields())}\n'
         final += "}"
+
+    elif output == 'report':
+        report_lists = jobj.report_filters()
+
+        final = ""
+
+        sorted_issues = jobj.report_sort_issue_list(issues)
+
+        for li in report_lists:
+            remove_ids = []
+            listed_issues = jobj.report_filter_issues(li, issues)
+            final += f"{li} issues:\n====================\n"
+            for issue in listed_issues:
+                final += f" * {issue.key:<15} {trim_text(jobj.get_field(issue, 'summary'), len_)}\n"
+                remove_ids.append(issue.key)
+
+            sorted_issues = [filt_issue for filt_issue in sorted_issues
+                             if filt_issue.key not in remove_ids]
+            final += "\n"
+
+        final += "Non-filtered Issues:\n====================\n"
+        for issue in sorted_issues:
+            final += f" * {issue.key:<15} {trim_text(jobj.get_field(issue, 'summary'), len_)}\n"
 
     click.echo(final)
 
