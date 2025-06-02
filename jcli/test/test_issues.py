@@ -3,6 +3,7 @@ from jcli.issues import list_cmd
 from jcli.issues import add_comment_cmd
 from jcli.issues import create_issue_cmd
 from jcli.test.stubs import JiraConnectorStub
+import json
 import pytest
 import random
 import re
@@ -42,6 +43,20 @@ def test_list_cmd_with_assignee(cli_runner):
 
     assert JiraConnectorStub._last_jql == 'assignee = "a@a.com" AND status not in ("Closed","Done")'
     assert result.exit_code == 0
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_list_cmd_json(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+    for _ in range(random.randint(1, 100)):
+        JiraConnectorStub.setup_add_random_issue()
+    result = cli_runner.invoke(list_cmd, ['--output', 'json'])
+    assert result.exit_code == 0
+
+    json_obj = json.loads(result.output)
+    assert "field_maps" in json_obj
+    assert "issues" in json_obj
+    assert "issues_count" in json_obj
 
 
 @patch('jcli.connector.JiraConnector', JiraConnectorStub)

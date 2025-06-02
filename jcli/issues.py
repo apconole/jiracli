@@ -47,7 +47,7 @@ ISSUE_DETAILS_MAP = {
               help="Whether to include closed issues (default is False).")
 @click.option("--summary-len", 'len_', type=int, default=45,
               help="Trim the summary length to certain number of chars (45 default, 0 for no trim)")
-@click.option('--output', type=click.Choice(['table', 'csv', 'simple']),
+@click.option('--output', type=click.Choice(['table', 'csv', 'simple', 'json']),
               default='table',
               help="Output format (default is 'table')")
 @click.option("--matching-eq", multiple=True, nargs=2, help="Custom JQL pair")
@@ -117,7 +117,7 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
     issues = jobj._query_issues(issues_query, issue_offset, max_issues)
     ISSUE_HEADER = []
 
-    if len(issues) != 0:
+    if len(issues) != 0 and output in ("table", "simple", "csv"):
         issue_list = []
         summary_pos = None
 
@@ -145,7 +145,14 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
             for line in issue_list:
                 final += ",".join(line) + "\n"
 
-        click.echo(final)
+    elif output == "json":
+        final = f'{{"issues_count":{len(issues)},\n'
+        if len(issues):
+            final += f'"issues":[{",".join([JSON.dumps(issue.raw) for issue in issues])}],\n'
+            final += f'"field_maps":{JSON.dumps(jobj._fetch_custom_fields())}\n'
+        final += "}"
+
+    click.echo(final)
 
 
 @click.command(

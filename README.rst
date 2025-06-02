@@ -193,6 +193,23 @@ see all updates in the last day::
 This can help to figure out which issues need responses for creating a daily
 to-do list.
 
+The output additionally can be formatted as JSON data to be used in more
+complex scripts, example::
+
+  $ jcli issues list --output json | jq -rc '.issues[] | keys'
+  ["expand","fields","id","key","self"]
+  ["expand","fields","id","key","self"]
+  ["expand","fields","id","key","self"]
+  ["expand","fields","id","key","self"]
+  ["expand","fields","id","key","self"]
+  ["expand","fields","id","key","self"]
+
+The JSON output has the following fields::
+
+  .issues_count : <num>
+  .issues : <list>
+  .field_maps : <dict>
+
 Display
 -------
 
