@@ -20,6 +20,7 @@ class JiraConnector(object):
     def __init__(self, config_file=None):
         self.config_file = config_file or self._default_config_file()
         self.config = self._load_cfg()
+        self.report_weights = None
         self.jira = None
         self.last_call_time = 0  # Store last call timestamp
 
@@ -48,6 +49,7 @@ class JiraConnector(object):
 
         if 'jira' not in config:
             raise ValueError("Missing jira section in config yaml")
+
         return config
 
     def _default_config_file(self):
@@ -711,6 +713,87 @@ class JiraConnector(object):
             if statusId == status.id or statusId == status.name:
                 return status
         return None
+
+    def issue_matches_conditions(self, issue, matching):
+        for field, expected in matching.items():
+            actual = self.get_field(issue, field)
+            if isinstance(expected, list):
+                if isinstance(actual, list):
+                    if not any(val in actual for val in expected):
+                        return False
+                else:
+                    if actual not in expected:
+                        return False
+            else:
+                if actual != expected:
+                    return False
+        return True
+
+    def filter_issue(self, issue, filtering):
+        if 'match' in filtering:
+            if not self.issue_matches_conditions(issue, filtering['match']):
+                return False
+
+        if 'or' in filtering:
+            if not any(self.issue_matches_conditions(issue,
+                                                     clause.get('match', {}))
+                       for clause in filtering['or']):
+                return False
+
+        return True
+
+    def report_filter_issues(self, list_name, issues):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if 'reporting' not in self.config['jira'] or \
+           'filters' not in self.config['jira']['reporting'] or \
+           list_name not in self.config['jira']['reporting']['filters']:
+            raise RuntimeError(f"No reporting section for {list_name}")
+
+        filter_config = self.config['jira']['reporting']['filters'][list_name]
+        return [i for i in issues if self.filter_issue(i, filter_config)]
+
+    def report_compute_score(self, issue):
+        score = 0
+
+        for field, spec in self.report_weights.items():
+            field_weight = spec['field_weight']
+            value_weights = spec['value_weights']
+            value = self.get_field(issue, field)
+            if value in value_weights:
+                score += field_weight + value_weights[value]
+
+        return score
+
+    def report_sort_issue_list(self, issues):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if self.report_weights is None:
+            self.report_weights = {}
+
+            if 'reporting' in self.config['jira'] and \
+               'ordering' in self.config['jira']['reporting']:
+                for field, data in self.config['jira']['reporting']['ordering'].items():
+                    self.report_weights[field] = {
+                        'field_weight': data.get('weight', 1),
+                        'value_weights': data.get('values', {})
+                    }
+
+        return sorted(issues, key=lambda x: -self.report_compute_score(x))
+
+    def report_filters(self):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if 'reporting' in self.config['jira'] and \
+           'filters' in self.config['jira']['reporting']:
+            result = list(self.config['jira']['reporting']['filters'].keys())
+        else:
+            result = []
+
+        return result
 
     def fetch_boards(self, limit=0) -> list:
         """Try to get all the boards configured in jira"""
