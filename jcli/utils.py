@@ -295,19 +295,19 @@ class RuntimeEvalChoice(click.Choice):
             self.choices = self._choice_get()
             self._requested = True
 
-    def convert(self, **kwargs):
+    def convert(self, value, param, ctx):
         self.ensure_requested()
-        return super().convert(**kwargs)
+        return super().convert(value, param, ctx)
 
-    def shell_complete(self, **kwargs):
+    def shell_complete(self, ctx, param, incomplete):
         self.ensure_requested()
-        return super().shell_complete(**kwargs)
+        return super().shell_complete(ctx, param, incomplete)
 
     def __repr__(self):
         self.ensure_requested()
         return f"RuntimeEvalChoice({list(self.choices)})"
 
-    def get_metavar(self, self2, **kwargs):
+    def get_metavar(self, param):
         self.ensure_requested()
         choices_str = "|".join(
             [str(i) for i in self.choices]
