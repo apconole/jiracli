@@ -98,7 +98,7 @@ ISSUE_DETAILS_MAP = {
                                 case_sensitive=False),
               default="none", help="Sort the output")
 @click.option('--template-file',
-              type=click.Path(exists=True),
+              type=click.Path(),
               default=os.path.join(os.path.expanduser("~"), "template.jcli"),
               help="Use the jinja2 engine to write out the list of issues.")
 def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
@@ -107,6 +107,10 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
              mentions, updated_since,
              issue_offset, max_issues, sort, template_file) -> None:
     jobj = connector.JiraConnector()
+
+    if output == 'template' and not os.path.isfile(template_file):
+        raise click.UsageError(f"Invalid template file {template_file}.")
+
     jobj.login()
 
     if jql is not None:
