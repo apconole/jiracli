@@ -210,6 +210,77 @@ The JSON output has the following fields::
   .issues : <list>
   .field_maps : <dict>
 
+Bulk Formatting
+---------------
+
+The `output` command for listing issues can output in more than just some
+simple preformatted responses.  There are two dynamic outputs for bulk
+formatting issues: **report** and **template**.  Each provides a different
+user-definable form of reporting on issues.
+
+The **report** output is controlled by a series of filter and order
+selections in your *jira.yml* file, such as ::
+
+  jira:
+    reporting:
+      filters:
+        FILTER1:
+          match:
+            status: ["New", "Start"]
+        FILTER2:
+          or:
+            - match:
+                Severity: ["Critical", "Blocker"]
+            - match:
+                priority: ["Super high", "OH NO"]
+      ordering:
+        field1:
+          weight: 200:
+          values:
+            fv1: 10
+            fv2: 11
+            fv3: 12
+            fv4: 13
+        field2:
+          weight: 100
+          values:
+            f2v1: 0
+            f2v2: 1
+
+This configuration creates two named filters: *FILTER1* and *FILTER2* which
+each have different match criteria.  It also defines priority ordering, using
+*field1* and *field2* for defining the relative weights.
+
+When a **report** output is running, first all the issues selected by the
+JQL are sorted according to the ordering.  Once they are sorted, then each
+issue is evaluated against the filter list.  If it matches, it is removed from
+the main list, and printed.  Once all filters have been evaluated, then the
+unfiltered issues are displayed.
+
+The **template** output is optionally available if the `jinja2` package is
+installed.  In this output mode, `jcli` will open the template file specified
+by the *--template-file* argument.  This will be formatted like a **jinja2**
+template, and gets two usable references: *issues* which is an issue list,
+and *client* which is the ``jcli.Connector`` instance that is currently
+in use.  An example template might look like (in ~/template.jcli) ::
+
+  Issues
+  ======
+  {% for issue in issues %}* {{issue.key | string}} | {{client.get_field(issue, "summary")}}
+  {%endfor%}
+
+And will generate output like::
+
+  $ jcli issues list --output template
+  Issues
+  ======
+  * BUG-123 | A normal bug
+  * BUG-124 | The system caught a cold because it is really a person
+
+See the Connector object for more details.  This can be useful for writing
+dynamic HTML based reports, or for generating RAG documents for an AI to
+help summarizing issues.
+
 Display
 -------
 

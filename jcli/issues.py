@@ -22,6 +22,26 @@ from jcli.utils import trim_text
 from jcli.utils import RuntimeEvalChoice
 from tabulate import tabulate
 
+reporting_choices = ['table', 'csv', 'simple', 'json',
+                     'report']
+
+try:
+    import jinja2
+
+    reporting_choices.append('template')
+
+    def template_output(tpl_file, issues, connector):
+        tmpl = None
+        with open(tpl_file, "r") as f:
+            tmpl = jinja2.Template(f.read())
+
+        return tmpl.render(issues=issues, client=connector) if tmpl else ""
+
+except:
+    def template_output(tpl_file, issues, connector):
+        return f"Module import error: jinja2 - not processing {tpl_file}"
+
+
 LOG = logging.getLogger(__name__)
 
 ISSUE_DETAILS_MAP = {
@@ -47,8 +67,7 @@ ISSUE_DETAILS_MAP = {
               help="Whether to include closed issues (default is False).")
 @click.option("--summary-len", 'len_', type=int, default=45,
               help="Trim the summary length to certain number of chars (45 default, 0 for no trim)")
-@click.option('--output', type=click.Choice(['table', 'csv', 'simple', 'json',
-                                             'report']),
+@click.option('--output', type=click.Choice(reporting_choices),
               default='table',
               help="Output format (default is 'table')")
 @click.option("--matching-eq", multiple=True, nargs=2, help="Custom JQL pair")
@@ -78,11 +97,15 @@ ISSUE_DETAILS_MAP = {
                                  "none"],
                                 case_sensitive=False),
               default="none", help="Sort the output")
+@click.option('--template-file',
+              type=click.Path(exists=True),
+              default=os.path.join(os.path.expanduser("~"), "template.jcli"),
+              help="Use the jinja2 engine to write out the list of issues.")
 def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
              matching_neq, matching_contains, matching_not,
              matching_in, matching_gt, matching_lt, matching_ge, matching_le,
              mentions, updated_since,
-             issue_offset, max_issues, sort) -> None:
+             issue_offset, max_issues, sort, template_file) -> None:
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -175,6 +198,9 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
         final += "Non-filtered Issues:\n====================\n"
         for issue in sorted_issues:
             final += f" * {issue.key:<15} {trim_text(jobj.get_field(issue, 'summary'), len_)}\n"
+
+    elif output == 'template':
+        final = template_output(template_file, issues, jobj)
 
     click.echo(final)
 
