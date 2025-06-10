@@ -838,11 +838,11 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
 
     for c in comments:
         if c.startswith("# set-field:"):
-            m = re.match(r'# set-field: "(.*)" (.*)', c)
+            m = re.match(r'# set-field:\s*(--forced\s+)"(.*)" (.*)', c)
             if m:
-                f, v = m.groups()
+                forced, f, v = m.groups()
                 f = jobj._try_fieldname(f)
-                v = jobj.convert_to_field_type(f, v)
+                v = jobj.convert_to_field_type(f, v) if not forced else eval(v)
                 issue[f] = v
         elif c.startswith("# set-project: "):
             project = c[15:]
