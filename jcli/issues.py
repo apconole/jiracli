@@ -106,6 +106,8 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
              matching_in, matching_gt, matching_lt, matching_ge, matching_le,
              mentions, updated_since,
              issue_offset, max_issues, sort, template_file) -> None:
+    """Runs a query against the JIRA server, and displays a list of issues.
+    """
     jobj = connector.JiraConnector()
 
     if output == 'template' and not os.path.isfile(template_file):
@@ -220,6 +222,20 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
 @click.option("--json", is_flag=True, default=False,
               help="Dump the issue details in json compatible form.")
 def show_cmd(issuekey, raw, width, json):
+    """Displays a JIRA issue, or dumps the raw issue details.
+
+    The 'show' command will auto-discover the terminal width when displaying,
+    unless the WIDTH parameter is set.
+
+    If you want to get the issue information for raw processing, it comes as
+    a pythonic-like dictionary, followed by a pythonic-like list of tuples
+    mapping field names and the customfield IDs.
+
+    To use the issue information in a more compatible way, the RAW, JSON details
+    will create a json list, with the first element being the json
+    representation of the JIRA issue, followed by a json map between fields
+    and customfield names.
+    """
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -431,6 +447,11 @@ IN_REPLY_TO = IntegerOrStr(['last'])
 @click.option("--in-reply-to", type=IN_REPLY_TO, default=None,
               help="Includes a quoted reply from an existing comment.")
 def add_comment_cmd(issuekey, comment, visibility, in_reply_to):
+    """Adds a new comment to a JIRA issue.
+
+    To reply to the most recent comment, simply pass the word 'last' as the
+    IN_REPLY_TO argument.
+    """
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -468,6 +489,7 @@ def add_comment_cmd(issuekey, comment, visibility, in_reply_to):
 @click.argument('issuekey')
 @click.argument('comment_id')
 def del_comment_cmd(issuekey, comment_id):
+    """Deletes a comment from an issue."""
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -492,6 +514,11 @@ def del_comment_cmd(issuekey, comment_id):
 @click.option('--visibility', type=str, default=None,
               help="Sets the group / role for visibility.  Use 'all' for no restriction.")
 def update_comment_cmd(issuekey, comment_id, body, visibility):
+    """Adjust a comment by modifying the body or visibility.
+
+    If the BODY parameter is passed, it will become the new body.  Otherwise,
+    an interactive EDITOR will spawn to allow adjusting the body if desired.
+    """
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -534,6 +561,7 @@ def update_comment_cmd(issuekey, comment_id, body, visibility):
 )
 @click.argument('issuekey')
 def states_cmd(issuekey):
+    """List the available state transitions for an issue."""
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -548,6 +576,11 @@ def states_cmd(issuekey):
 @click.argument("issuekey")
 @click.argument("status")
 def set_state_cmd(issuekey, status):
+    """Set an issue's current state.
+
+    States are per-project in JIRA.  You can use the 'states' command to
+    discover what the available transitions for a given issue are.
+    """
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -561,6 +594,7 @@ def set_state_cmd(issuekey, status):
 @click.argument('issuekey')
 @click.argument('watcher')
 def add_watcher_cmd(issuekey, watcher):
+    """Adds a JIRA account as a watcher for an issue."""
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -574,6 +608,7 @@ def add_watcher_cmd(issuekey, watcher):
 @click.argument('issuekey')
 @click.argument('watcher')
 def del_watcher_cmd(issuekey, watcher):
+    """Removes a watcher from an issue."""
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -587,6 +622,11 @@ def del_watcher_cmd(issuekey, watcher):
 @click.argument('issuekey')
 @click.argument('fieldname')
 def get_field_cmd(issuekey, fieldname):
+    """Get a field value from a JIRA issue.
+
+    NOTE: In JIRA, field names are case sensitive, so double check that
+          you are specifying the correct field name."""
+
     jobj = connector.JiraConnector()
     jobj.login()
     issue = jobj.get_issue(issuekey)
@@ -603,6 +643,15 @@ def get_field_cmd(issuekey, fieldname):
 @click.option("--forced", is_flag=True, default=False,
               help="Force the value to be run through python eval and used as-is.")
 def set_field_cmd(issuekey, fieldname, fieldvalue, forced):
+    """Sets a field in an issue to a specific value.
+
+    JIRA field types are not always properly communicated in the field type
+    schema, so the '--forced' option can be used to ensure that the type is
+    set correctly.
+
+    NOTE: In JIRA, field names are case sensitive, so double check that
+          you are specifying the correct field name.  If the field is not
+          correct, you may see blank output."""
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -626,6 +675,14 @@ def set_field_cmd(issuekey, fieldname, fieldvalue, forced):
 )
 @click.argument('csvfile', type=click.Path(exists=True))
 def set_field_from_csv_cmd(csvfile):
+    """Bulk field setting for fields and issues.
+
+    Expects a CSV formed as:
+      issue1,field,value[,field2,value2,...]
+      issue2,field,value
+
+    Currently, there isn't a specifier for 'forcing' a field type.
+    """
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -775,6 +832,17 @@ def issue_extract_blocks(issue_block):
               help="Do not actually commit the issue.")
 def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
                      from_file, commit, oneline, verbose, show_fields, dry_run):
+    """Creates a new JIRA issue.
+
+    Supports creating a JIRA issue from the command line, using a 'git' like
+    interface.  The issue details can be provided by an existing file, or via
+    a PATCH file, or from a git commit.  Additionally, various JIRA fields
+    can be set during the creation.
+
+    The DRY-RUN flag will not actually push the JIRA issue to the server.  It
+    doesn't save the issue details anywhere, so it is important to keep a copy
+    for resubmitting if you don't want to re-write the issue details again.
+    """
     if 'jobj' not in ctx.obj:
         jobj = connector.JiraConnector()
         jobj.login()
@@ -896,6 +964,7 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
 @click.option("--push", default=None,
               help="file to upload as attachment")
 def attachments_cmd(issuekey, pull, push):
+    """List, Pull, or Push attachments to a JIRA issue."""
     jobj = connector.JiraConnector()
     jobj.login()
     issue = jobj.get_issue(issuekey)
@@ -942,6 +1011,7 @@ def attachments_cmd(issuekey, pull, push):
 @click.argument('issuekey')
 @click.argument('vote')
 def eausm_vote_cmd(issuekey, vote):
+    """Set a vote for an issue using the Easy Agile planning poker plugin."""
     jobj = connector.JiraConnector()
     jobj.login()
     issue = jobj.get_issue(issuekey)

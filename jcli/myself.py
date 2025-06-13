@@ -10,6 +10,8 @@ LOG = logging.getLogger(__name__)
     name='login'
 )
 def login_cmd() -> None:
+    """Tests that the login routine is working.
+    """
     jobj = connector.JiraConnector()
 
     try:
@@ -22,6 +24,8 @@ def login_cmd() -> None:
     name='myself'
 )
 def myself_cmd() -> None:
+    """Display the logged in user.
+    """
     jobj = connector.JiraConnector()
     jobj.login()
     click.echo(jobj.myself())

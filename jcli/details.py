@@ -7,6 +7,10 @@ import pprint
     name='last-states'
 )
 def last_states_cmd():
+    """Print all the 'final' states for issues on the server.
+
+    NOTE: Not all states are valid for all issues / projects.
+    """
     jobj = connector.JiraConnector()
     jobj.login()
     click.echo(jobj.last_states_names())
@@ -16,6 +20,10 @@ def last_states_cmd():
     name='statuses'
 )
 def statuses_cmd():
+    """Print the various 'states' or 'statuses' known to the server.
+
+    NOTE: Not all states are valid for all issues / projects.
+    """
     jobj = connector.JiraConnector()
     jobj.login()
     click.echo([(x.name, x.id) for x in jobj._get_statuses()])
@@ -25,6 +33,7 @@ def statuses_cmd():
     name="server-info"
 )
 def server_info_cmd():
+    """Dumps basic server details."""
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -38,6 +47,7 @@ def server_info_cmd():
     name="groups"
 )
 def groups_info_cmd():
+    """Display the various GROUPs that are set on the server."""
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -51,6 +61,7 @@ def groups_info_cmd():
 )
 @click.argument("project")
 def components_info_cmd(project):
+    """Displays a list of components for the given PROJECT."""
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -63,6 +74,7 @@ def components_info_cmd(project):
     name="link-types"
 )
 def link_types_cmd():
+    """Displays the types of links that the server supports."""
     jobj = connector.JiraConnector()
     jobj.login()
 

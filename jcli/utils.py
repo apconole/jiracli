@@ -275,6 +275,12 @@ def md_to_jira(text):
               default='md',
               help="The expected conversion type (if md, input should be jira)")
 def convert_cmd(input, to):
+    """Convert between JIRA formatted text and markdown.
+
+    This can be used to convert input 'to' JIRA (in which case, the expected
+    input is in simple 'Markdown'), or 'to' a simple Markdown (in which case,
+    the expected input is JIRA formatted text).
+    """
     data = input.read()
     if to == "jira":
         click.echo(md_to_jira(data))
