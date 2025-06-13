@@ -313,7 +313,7 @@ class RuntimeEvalChoice(click.Choice):
         self.ensure_requested()
         return f"RuntimeEvalChoice({list(self.choices)})"
 
-    def get_metavar(self, param):
+    def get_metavar(self, param, ctx):
         self.ensure_requested()
         choices_str = "|".join(
             [str(i) for i in self.choices]
