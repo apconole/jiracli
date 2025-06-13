@@ -79,3 +79,14 @@ def link_types_cmd():
     jobj.login()
 
     click.echo(pprint.pformat(jobj.jira.issue_link_types()))
+
+
+@click.command(name="project-versions")
+@click.argument("project")
+def dump_project_versions_cmd(project):
+    """Dumps the available versions for a project."""
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    click.echo(pprint.pformat([x.name
+                               for x in jobj.jira.project_versions(project)]))

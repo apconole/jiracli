@@ -98,6 +98,7 @@ details.add_command(details_cmds.statuses_cmd)
 details.add_command(details_cmds.groups_info_cmd)
 details.add_command(details_cmds.components_info_cmd)
 details.add_command(details_cmds.link_types_cmd)
+details.add_command(details_cmds.dump_project_versions_cmd)
 
 boards.add_command(boards_cmds.list_cmd)
 boards.add_command(boards_cmds.show_cmd)
