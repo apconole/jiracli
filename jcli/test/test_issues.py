@@ -2,6 +2,7 @@ from click.testing import CliRunner
 from jcli.issues import list_cmd
 from jcli.issues import add_comment_cmd
 from jcli.issues import create_issue_cmd
+from jcli.issues import get_field_cmd
 from jcli.test.stubs import JiraConnectorStub
 import json
 import pytest
@@ -165,3 +166,41 @@ def test_issue_create(cli_runner):
                                 '--issue-type', 'Bug'], obj={})
     assert result.exit_code == 0
     assert "done - Result: " in result.output
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_issue_case_cmp(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+
+    s = JiraConnectorStub()
+    for _ in range(random.randint(1, 100)):
+        JiraConnectorStub.setup_add_random_issue()
+
+    issue = random.choice(s._query_issues("", 0, 100))
+    # First - ensure that case matters
+    result = cli_runner.invoke(get_field_cmd,
+                               [issue['key'],
+                                'component'], obj={})
+
+    print(result.output)
+    assert result.exit_code == 0
+    assert "component: \n" in result.output
+
+    # Check that the case does match
+    result = cli_runner.invoke(get_field_cmd,
+                               [issue['key'],
+                                'Component'], obj={})
+    assert result.exit_code == 0
+    assert "Component: component\n" in result.output
+
+    # Now 'force' case insensitive
+    cfg = JiraConnectorStub.config
+    cfg['jira']['default']['case_sensitive'] = False
+    JiraConnectorStub.reset_config(cfg)
+
+    result = cli_runner.invoke(get_field_cmd,
+                               [issue['key'],
+                                'component'], obj={})
+
+    assert result.exit_code == 0
+    assert "component: component\n" in result.output
