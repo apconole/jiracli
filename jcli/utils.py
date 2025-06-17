@@ -270,16 +270,17 @@ def md_to_jira(text):
 
 
 @click.command(name="convert")
-@click.argument("input", type=click.File('r'), help="Input file to convert")
+@click.argument("input", type=click.File('r'))
 @click.option("--to", type=click.Choice(['jira', 'md']),
               default='md',
               help="The expected conversion type (if md, input should be jira)")
 def convert_cmd(input, to):
     """Convert between JIRA formatted text and markdown.
 
-    This can be used to convert input 'to' JIRA (in which case, the expected
-    input is in simple 'Markdown'), or 'to' a simple Markdown (in which case,
-    the expected input is JIRA formatted text).
+    This can be used to convert input file 'to' JIRA (in which case, the
+    expected input file should contain simple 'Markdown'), or 'to' a simple
+    Markdown (in which case, the expected input file should contain JIRA
+    formatted text).
     """
     data = input.read()
     if to == "jira":
