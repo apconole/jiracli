@@ -162,7 +162,7 @@ def sprints_cmd(boardname, name, show_all, my_issues):
         if not show_all and sprint.state == "closed":
             continue
 
-        if name and name != sprint:
+        if name and name.lower() != sprint.name.lower():
             continue
 
         issue_col_store = {column: [] for column in columns}
