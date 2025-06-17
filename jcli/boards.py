@@ -1,4 +1,5 @@
 import click
+import json as JSON
 import logging
 import pprint
 
@@ -145,7 +146,11 @@ def get_config_cmd(boardname):
               help='Display all sprints, including closed sprints.')
 @click.option('--my-issues', type=bool, is_flag=True, default=False,
               help='Display only those issues in the sprint where assignee is me.')
-def sprints_cmd(boardname, name, show_all, my_issues):
+@click.option("--no-issues", type=bool, is_flag=True, default=False,
+              help="Do not query or display issues.")
+@click.option("--json", type=bool, is_flag=True, default=False,
+              help="Print the details in JSON format.")
+def sprints_cmd(boardname, name, show_all, my_issues, no_issues, json):
     """
     Displays the sprints of a board, optionally specified by 'name'
     """
@@ -158,7 +163,10 @@ def sprints_cmd(boardname, name, show_all, my_issues):
     ISSUE_HEADER = [column for column in columns]
 
     final_output = ""
+    json_sprints = []
     for sprint in sprints:
+        current_sprint = {}
+
         if not show_all and sprint.state == "closed":
             continue
 
@@ -176,10 +184,19 @@ def sprints_cmd(boardname, name, show_all, my_issues):
         except:
             end_date = "0000-00-00T00:00:00.000Z"
 
-        final_output += f"Sprint: {sprint}, id: {sprint.id}\n   start: {start_date} -> end: {end_date}\n"
+        if not json:
+            final_output += f"Sprint: {sprint}, id: {sprint.id}\n   start: {start_date} -> end: {end_date}\n"
+        else:
+            current_sprint["name"] = sprint.name
+            current_sprint["id"] = sprint.id
+            current_sprint["start_date_str"] = start_date
+            current_sprint["end_date_str"] = end_date
 
         issues_query = f'sprint = "{str(sprint)}" and {base_filter}'
-        issues = jobj._query_issues(issues_query, 0, 250)
+        if not no_issues:
+            issues = jobj._query_issues(issues_query, 0, 250)
+        else:
+            issues = []
 
         match_assignee = None
         if my_issues:
@@ -191,11 +208,26 @@ def sprints_cmd(boardname, name, show_all, my_issues):
                     if my_issues and \
                        jobj.get_field(issue, 'assignee', 'name') != match_assignee:
                         continue
-                    issuestr = f"{issue.key}"
-                    issue_col_store[column].append(issuestr)
 
-        if len(issues):
+                    if not json:
+                        issuestr = f"{issue.key}"
+                        issue_col_store[column].append(issuestr)
+                    else:
+                        jsissue = {}
+                        jsissue["key"] = issue.key
+                        jsissue["summary"] = jobj.get_field(issue, "summary")
+                        jsissue["assignee"] = jobj.get_field(issue, "assignee")
+                        jsissue["status"] = jobj.get_field(issue, "status")
+                        issue_col_store[column].append(jsissue)
+
+        if len(issues) and not json:
             final_output += tabulate(issue_col_store, ISSUE_HEADER, 'psql')
             final_output += "\n\n"
+        else:
+            current_sprint["columns"] = issue_col_store
+            json_sprints.append(current_sprint)
 
-    click.echo(final_output)
+    if not json:
+        click.echo(final_output)
+    else:
+        click.echo(JSON.dumps(json_sprints))
