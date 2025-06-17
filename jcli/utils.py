@@ -270,7 +270,7 @@ def md_to_jira(text):
 
 
 @click.command(name="convert")
-@click.argument("input", type=click.File('r'))
+@click.argument("input", type=click.File('r'), help="Input file to convert")
 @click.option("--to", type=click.Choice(['jira', 'md']),
               default='md',
               help="The expected conversion type (if md, input should be jira)")
