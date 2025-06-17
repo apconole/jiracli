@@ -64,17 +64,25 @@ class JiraAuthorStub(dict):
 class JiraConnectorStub(JiraConnector):
     _issues_list = []
     _last_jql = ""
+    config = {}
+
+    def reset_config(cfg=None):
+        if cfg:
+            JiraConnectorStub.config = cfg
+        else:
+            JiraConnectorStub.config['jira'] = {}
+            JiraConnectorStub.config['jira']['default'] = {}
+            JiraConnectorStub.config['jira']['default']['markdown'] = True
 
     def __init__(self, config_file=None):
         self._last_jql = ""
         self.jira = jira_url_holder()
-        self.config = {}
-        self.config['jira'] = {}
-        self.config['jira']['default'] = {}
-        self.config['jira']['default']['markdown'] = True
+        self.config = JiraConnectorStub.config
         self._last_comment_reply = None
+        self._fields = []
 
     def setup_add_random_issue():
+        JiraConnectorStub.reset_config()
         issue = JiraIssueStub()
         prio = random.choice(["Minor", "Normal", "High", "Critical"])
         issue_tag = random.choice(["PROJMAIN-", "PROJEXP-", "CUSTOMER-"]) + str(
@@ -123,6 +131,7 @@ class JiraConnectorStub(JiraConnector):
         f['project'] = {"name": "TEST"}
         f['status'] = {'name': status}
         f['assignee'] = assignee
+        f['Component'] = "component"
         issue.raw['fields'] = f
         issue["key"] = issue_tag
 
@@ -138,7 +147,11 @@ class JiraConnectorStub(JiraConnector):
         pass
 
     def get_issue(self, issue_identifier):
-        pass
+        for i in JiraConnectorStub._issues_list:
+            if i['key'] == issue_identifier:
+                return i
+
+        return None
 
     def get_states_for_issue(self, issue_identifier):
         pass
@@ -162,16 +175,7 @@ class JiraConnectorStub(JiraConnector):
     def requested_fields(self):
         pass
 
-    def get_field(self, issue, fieldname, substruct=None):
-        pass
-
     def set_field(self, issue, fieldname, val):
-        pass
-
-    def _fetch_custom_fields(self):
-        pass
-
-    def _fetch_field_type_mapping(self):
         pass
 
     def create_issue(self, issue_dict):

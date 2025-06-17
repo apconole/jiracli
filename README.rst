@@ -210,6 +210,19 @@ The JSON output has the following fields::
   .issues : <list>
   .field_maps : <dict>
 
+Querying Fields
+---------------
+
+The `get-field` command allows pulling a **field: value** from the issue, for
+any field you are interested in.  Normally, these fields are case sensitive.
+That can be controlled by a yaml setting::
+
+  jira:
+    default:
+      case_sensitive: false
+
+Case sensitivity is defaulted to 'true'.
+
 Bulk Formatting
 ---------------
 
@@ -411,6 +424,9 @@ Setting a specific field looks like::
 
   $ jcli issues set-field BUG-123 "Priority" "Normal"
   Updated BUG-123, set Priority High -> Normal
+
+Field names are normally case sensitive, but that setting can be adjusted (see
+the section on getting fields).  Field values are **ALWAYS** case sensitive.
 
 To move an issue to a different status, JIRA requires the use of a transition.
 The valid transitions for an issue can be determined by::
