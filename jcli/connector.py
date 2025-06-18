@@ -456,7 +456,18 @@ class JiraConnector(object):
         if isinstance(issue, str):
             issue = self.get_issue(issue)
 
-        if fieldname in issue.raw['fields']:
+        casecmp = bool(self.get_default_str('case_sensitive', "true"))
+        for rawfield in issue.raw['fields']:
+            if not casecmp:
+                if rawfield.lower() != fieldname.lower():
+                    continue
+                else:
+                    # Since we are not caring about case, we found a
+                    # match, so 'force' the case correctly.
+                    fieldname = rawfield
+            elif rawfield != fieldname:
+                continue
+
             if issue.raw['fields'][fieldname] is None:
                 return "None"
             if isinstance(issue.raw['fields'][fieldname], str):
@@ -481,11 +492,18 @@ class JiraConnector(object):
         fields = self._fetch_custom_fields()
         val = None
         for field in fields:
-            if fields[field] == fieldname:
-                try:
-                    val = eval(f"issue.fields.{field}")
-                except:
-                    val = None
+            if not casecmp:
+                if fields[field].lower() != fieldname.lower():
+                    continue
+                else:
+                    fieldname = fields[field]
+            elif fields[field] != fieldname:
+                continue
+
+            try:
+                val = eval(f"issue.fields.{field}")
+            except:
+                val = None
         return val
 
     def get_field(self, issue, fieldname, substruct=None) -> str:
@@ -583,7 +601,15 @@ class JiraConnector(object):
             issue = self.get_issue(issue)
 
         issue_dict = {}
-        if fieldname in issue.raw['fields']:
+        casecmp = bool(self.get_default_str('case_sensitive', "true"))
+        for rawfield in issue.raw['fields']:
+            if not casecmp:
+                if rawfield.lower() != fieldname.lower():
+                    continue
+                else:
+                    fieldname = rawfield
+            elif rawfield != fieldname:
+                continue
             f = eval(f"issue.fields.{fieldname}")
             if not isinstance(f, types.NoneType) and not forced:
                 val = self.convert_to_jira_type(f, val)
@@ -596,12 +622,19 @@ class JiraConnector(object):
 
         fields = self._fetch_custom_fields()
         for field in fields:
-            if fields[field] == fieldname:
-                if not forced:
-                    val = self.convert_to_field_type(field, val)
+            if not casecmp:
+                if fields[field].lower() != fieldname.lower():
+                    continue
                 else:
-                    val = eval(val)
-                issue_dict = {field: val}
+                    fieldname = fields[field]
+            elif fields[field] != fieldname:
+                continue
+
+            if not forced:
+                val = self.convert_to_field_type(field, val)
+            else:
+                val = eval(val)
+            issue_dict = {field: val}
 
         self._ratelimit()
         issue.update(issue_dict)
