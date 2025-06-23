@@ -139,11 +139,11 @@ The `.jira.yaml` does allow to select fields for inclusion, and
 alternatively for exclusion.  The fields section looks like::
 
   jira:
-  server: https://issues.place.com
-  issues:
-    - field:
-      name: Some Field
-      [exclude: true|false]
+    server: https://issues.place.com
+    issues:
+      - field:
+        name: Some Field
+        [exclude: true|false]
 
 The exclude line for a field is optional, and can be either true
 or false.  There are some 'built-in' fields that have support:
