@@ -13,6 +13,7 @@ import pprint
 import re
 import time
 import types
+import urllib
 import yaml
 
 
@@ -49,6 +50,8 @@ class JiraConnector(object):
 
         if 'jira' not in config:
             raise ValueError("Missing jira section in config yaml")
+        if 'server' not in config['jira']:
+            raise ValueError("Missing server for jira config yaml")
 
         return config
 
@@ -91,6 +94,31 @@ class JiraConnector(object):
                 token = getpass.getpass(prompt="Enter your Jira password: ")
             else:
                 token = self.config['auth']['password']
+        elif auth_type == 'authinfo':
+            authinfo_file = None
+            for f in ["~/.netrc", "~/.authinfo", "~/.authinfo.gpg"]:
+                authinfo_file_tmp = os.path.expanduser(f)
+                if not os.path.exists(authinfo_file_tmp):
+                    continue
+                authinfo_file = authinfo_file_tmp
+
+            if not authinfo_file:
+                raise ValueError("ERROR: No authinfo file to search.")
+
+            jira_server = \
+                urllib.parse.urlparse(self.config['jira']['server']).hostname
+
+            entry = utils.get_authinfo_entry(authinfo_file, jira_server)
+            if not entry:
+                raise ValueError(f"ERROR: No authinfo entry for {jira_server}")
+
+            if 'token' in self.config['auth'] and \
+               bool(self.config['auth']['token']):
+                self.jira = JIRA(self.config['jira'],
+                                 token_auth=entry.get("password"))
+            else:
+                username = entry.get("login")
+                token = entry.get("password")
         else:
             raise ValueError(f"Unknown auth type: {auth_type}")
 

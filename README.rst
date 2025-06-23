@@ -33,9 +33,74 @@ First, you'll need to populate a jira yaml file that the internal jira
 connector class will use to connect to the jira server.  To do this,
 you'll want to use the example found in the *examples/* directory.
 
-You'll want to change the authentication information, and you probably
-will want to set specific fields to be included with issue information
-(depending on what custom fields your JIRA projects use such as
+Note that the examples are very basic, and will need heavy modification.
+
+Jira Section
+------------
+
+The *.jira.yml* file should contain a `jira:` section that looks like::
+
+  jira:
+    server: SERVER_URL
+
+It can contain additional sections (listed later).
+
+Authentication
+--------------
+
+You'll want to change the authentication information for actually
+accessing a JIRA instance.  Currently, the jira client library will support
+authentication by kerberos, or Personal Access Token.  Additionally, the
+JiraCLI project can support storing authentication details in an authinfo
+or netrc file (which may be gnupg encrypted).
+
+To use kerberos, your *~/.jira.yml* can look like::
+
+  auth:
+    username: my_username
+    type: kerberos
+    kerberos_options:
+      mutual_authentication: OPTIONAL
+
+The kerberos options is an optional extension.  Not all JIRA servers will
+have kerberos authentication support, and some servers will rely on extensions
+to the kerberos authentication that are not supported in the urllib/httplib
+that the jira client uses.
+
+The JIRA client also supports authentication via Personal Access Token::
+
+  auth:
+    username: my_username
+    type: api
+    pat: true
+      key: MY_PAT_KEY
+
+The PAT key needs to be obtained via the web interface.
+
+Finally, to keep things a bit more private, the JiraCLI authentication
+block can reference netrc/authinfo.gpg files.  To use this for PAT
+authentication, you can set up your yaml file as follows::
+
+  auth:
+    username: my_username
+    type: authinfo
+    token: true
+
+The `token` keyword tells JiraCLI to treat the netrc password field as
+a Personal Access Token instead of as a password for Basic authentication.
+If you use authinfo, you can add an authinfo entry that matches your jira
+server value::
+
+  machine jira.server username my_user password MY_PASSWORD
+
+The JiraCLI will automatically use the gpg-agent to decrypt the authinfo file
+if needed, and provide that as the key.
+
+First Steps
+-----------
+
+You probably will want to set specific fields to be included with issue
+information (depending on what custom fields your JIRA projects use such as
 'Story Points', etc).  Once you've set up the basic stuff, you can list
 your issues with::
 

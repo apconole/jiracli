@@ -10,6 +10,63 @@ import sys
 import tempfile
 
 
+def get_gpg_authinfo(authinfo_file):
+    try:
+        result = subprocess.run(["gpg", "--quiet", "--batch", "--decrypt",
+                                 authinfo_file],
+                                check=True,
+                                stdout=subprocess.PIPE,
+                                text=True)
+        return str(result.stdout)
+    except:
+        raise RuntimeError(f"Unable to decrypt {authinfo_file}")
+
+
+def dump_authinfo_entries(authinfo_file):
+    if authinfo_file.endswith("gpg"):
+        text = get_gpg_authinfo(authinfo_file)
+    else:
+        with open(os.path.expand(authinfo_file), "r") as f:
+            text = f.read()
+
+    return text
+
+
+def get_entry(authinfo_file, **kw):
+
+    for line in dump_authinfo_entries(authinfo_file).splitlines():
+        entry = {}
+
+        # parse out the current line
+        if not line.strip() or line.startswith("#"):
+            continue
+        tokens = line.split()
+        if len(tokens) % 2 != 0:
+            # skip possibly malformed line
+            continue
+
+        for i in range(0, len(tokens), 2):
+            key, value = tokens[i], tokens[i + 1]
+            entry[key] = value
+
+        for k, v in kw.items():
+            if v is None:
+                continue
+            if entry.get(k) is None:
+                continue
+            if entry.get(k) != v:
+                break
+            else:
+                return entry
+
+    return None
+
+
+def get_authinfo_entry(authinfo_file, machine):
+    entry = get_entry(authinfo_file, machine=machine)
+    return entry
+
+
 def trim_text(data, length=45) -> str:
     return data[:length - 1] + "..." \
         if length > 0 and len(data) > length else data
