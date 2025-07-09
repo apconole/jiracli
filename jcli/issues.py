@@ -147,6 +147,7 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
     issues = jobj._query_issues(issues_query, issue_offset, max_issues)
     ISSUE_HEADER = []
 
+    final=""
     if len(issues) != 0 and output in ("table", "simple", "csv"):
         issue_list = []
         summary_pos = None
