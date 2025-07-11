@@ -178,9 +178,8 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
 
     elif output == "json":
         final = f'{{"issues_count":{len(issues)},\n'
-        if len(issues):
-            final += f'"issues":[{",".join([JSON.dumps(issue.raw) for issue in issues])}],\n'
-            final += f'"field_maps":{JSON.dumps(jobj._fetch_custom_fields())}\n'
+        final += f'"issues":[{",".join([JSON.dumps(issue.raw) for issue in issues])}],\n'
+        final += f'"field_maps":{JSON.dumps(jobj._fetch_custom_fields())}\n'
         final += "}"
 
     elif output == 'report':
