@@ -40,6 +40,7 @@ Eelco Chaudron              echaudro@redhat.com
 Flavio Leitner              fbl@sysclose.org
 Lon Hohberger               lhh@redhat.com
 Marcelo Leitner             mleitner@redhat.com
+Ondrej Lichtner             olichtne@redhat.com
 Sushil Kulkarni             sukulkar@redhat.com
 Vrinda Punj                 vpunj@redhat.com
 ==========================  =================================================
