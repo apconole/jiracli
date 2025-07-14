@@ -908,6 +908,7 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
             f = '"' + f + '"'
             fields[f] = "value"
 
+    special_lines += "#\n"
     for f in set_field:
         field = f[0]
         if not field.startswith('"'):
@@ -936,7 +937,7 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
 
     for c in comments:
         if c.startswith("# set-field:"):
-            m = re.match(r'# set-field:\s*(--forced\s+)"(.*)" (.*)', c)
+            m = re.match(r'# set-field:\s*(--forced)?\s*"(.*)" (.*)', c)
             if m:
                 forced, f, v = m.groups()
                 f = jobj._try_fieldname(f)

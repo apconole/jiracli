@@ -5,6 +5,7 @@ from jcli.issues import create_issue_cmd
 from jcli.issues import get_field_cmd
 from jcli.test.stubs import JiraConnectorStub
 import json
+import pprint
 import pytest
 import random
 import re
@@ -148,7 +149,7 @@ def test_reply_to_cmd(cli_runner):
 
 
 @patch('jcli.connector.JiraConnector', JiraConnectorStub)
-def test_issue_create(cli_runner):
+def test_issue_create(cli_runner, tmpdir):
     JiraConnectorStub.setup_clear_issues()
 
     result = cli_runner.invoke(create_issue_cmd, obj={})
@@ -166,6 +167,45 @@ def test_issue_create(cli_runner):
                                 '--issue-type', 'Bug'], obj={})
     assert result.exit_code == 0
     assert "done - Result: " in result.output
+
+    # Now test with set-commands
+    issue_project = "DEF"
+    result = cli_runner.invoke(create_issue_cmd,
+                               ['--verbose',
+                                '--summary', issue_summary,
+                                '--description', issue_description,
+                                '--project', issue_project,
+                                '--issue-type', 'Bug',
+                                '--set-field', 'priority', 'Medium',
+                                '--set-field', 'duedate', '2025-07-15'], obj={})
+    assert result.exit_code == 0
+    assert JiraConnectorStub.last_issue is not None
+    print(result.output)
+    print(f"Issue: {pprint.pformat(JiraConnectorStub.last_issue)}")
+    assert 'priority' in JiraConnectorStub.last_issue
+    assert 'duedate' in JiraConnectorStub.last_issue
+
+    # Now test 'forced' flag
+    issue_set_text = f"""# Starting an issue
+{issue_summary} - from file.
+
+DESC: {issue_description}
+
+# set-project: {issue_project}
+# issue-type: Bug
+# set-field: --forced "priority" int(1234)
+# set-field: "duedate" 2025-07-15
+"""
+    f = tmpdir.join("issue_txt")
+    f.write(issue_set_text)
+    cli_runner.invoke(create_issue_cmd,
+                      ['--verbose',
+                       '--from-file', str(f)],
+                      obj={})
+    assert result.exit_code == 0
+    assert JiraConnectorStub.last_issue is not None
+    assert 'priority' in JiraConnectorStub.last_issue
+    assert JiraConnectorStub.last_issue['priority'] == 1234
 
 
 @patch('jcli.connector.JiraConnector', JiraConnectorStub)

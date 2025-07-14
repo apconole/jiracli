@@ -64,6 +64,7 @@ class JiraAuthorStub(dict):
 class JiraConnectorStub(JiraConnector):
     _issues_list = []
     _last_jql = ""
+    last_issue = None
     config = {}
 
     def reset_config(cfg=None):
@@ -185,6 +186,7 @@ class JiraConnectorStub(JiraConnector):
            'issuetype' not in issue_dict or \
            'project' not in issue_dict:
             raise ValueError("Missing required elements")
+        JiraConnectorStub.last_issue = issue_dict
         return 'ISSUE-abc'
 
     def add_comment(self, issue_identifier, comment_body, visibility):
