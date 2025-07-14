@@ -693,6 +693,11 @@ class JiraConnector(object):
 
         if field_type == "string":
             return field_value
+        elif field_type == "dict":
+            if ':' not in field_value:
+                return {"name": field_value}
+            else:
+                return eval(field_value)
         elif field_type == "user":
             n = self.find_users_for_name(field_value)
             if len(n) != 1:
@@ -727,6 +732,7 @@ class JiraConnector(object):
         field_type_mapping = {field['id']: field['schema']['type']
                               for field in custom_fields if field['custom']}
         field_type_mapping["assignee"] = "user"
+        field_type_mapping["priority"] = "dict"
 
         self._field_type_mapping = field_type_mapping
         return self._field_type_mapping
