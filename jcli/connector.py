@@ -17,6 +17,45 @@ import urllib
 import yaml
 
 
+try:
+    import browser_cookie3
+
+    def get_browser_cookies(server_info, spawned=False):
+        orig_url = server_info
+        if server_info.startswith('https://'):
+            server_info = server_info[8:]
+        if server_info.startswith('http://'):
+            server_info = server_info[7:]
+        for check in [browser_cookie3.chrome, browser_cookie3.chromium,
+                      browser_cookie3.firefox]:
+            cookies = check(domain_name=server_info)
+            for cookie in cookies:
+                if cookie.name in ['DWRSESSIONID', 'JSESSIONID',
+                                   'JiraSDSamlssoLoginV2']:
+                    return cookies
+        if not spawned:
+            try:
+                import webbrowser
+                print("Attempting web redirection...")
+                webbrowser.open(orig_url + '/login')
+                print("Retrying to pull cookies for the next minute...")
+
+                for _ in range(60):
+                    cookies = get_browser_cookies(server_info, True)
+                    if cookies:
+                        return cookies
+                    time.sleep(1)
+
+            except:
+                pass
+            print("Failed to pull cookies.")
+            return None
+        return None
+except:
+    def get_browser_cookies(server_info):
+        return None
+
+
 class JiraConnector(object):
     def __init__(self, config_file=None):
         self.config_file = config_file or self._default_config_file()
@@ -98,17 +137,14 @@ class JiraConnector(object):
             self.jira = None
 
         if 'auth' not in self.config:
-            raise ValueError("Missing 'auth' section.")
+            self.config['auth'] = {}
 
-        if 'username' not in self.config['auth']:
-            raise ValueError("Authentication section missing a username.")
-
-        username = self.config['auth']['username']
-        auth_type = 'api'
+        auth_type = 'cookie_harvest'
 
         if 'type' in self.config['auth']:
             auth_type = self.config['auth']['type']
 
+        username = None
         if auth_type == 'api':
             if 'key' not in self.config['auth']:
                 raise ValueError("Missing 'key' for 'api' auth type")
@@ -151,10 +187,18 @@ class JiraConnector(object):
             else:
                 username = entry.get("login")
                 token = entry.get("password")
+        elif auth_type == 'cookie_harvest':
+            cookies = get_browser_cookies(self.config['jira']['server'])
+            if not cookies:
+                raise ValueError("ERROR: No browser cookies detected (or browser_cookies3 not installed).")
+            self.jira = JIRA(server=self.config['jira']['server'],
+                             options={"cookies": cookies})
         else:
             raise ValueError(f"Unknown auth type: {auth_type}")
 
         if self.jira is None:
+            if username is None:
+                username = self.config['auth']['username']
             self.jira = JIRA(self.config['jira'], basic_auth=(username,
                                                               token))
             self._ratelimit()
@@ -165,7 +209,19 @@ class JiraConnector(object):
             # found a cached credentials file
             pass
         else:
-            self._login()
+            throw_code = 0
+            try:
+                self._login()
+            except jira.exceptions.JIRAError as je:
+                throw_code = je.status_code
+
+            if throw_code:
+                if throw_code == 401:
+                    raise RuntimeError(
+                        "Error logging in: double check your key, and login.")
+                else:
+                    raise RuntimeError(f"Error logging in: {throw_code}")
+
             # pprint.pprint(vars(self.jira))
             # pprint.pprint(vars(self.jira._session))
 

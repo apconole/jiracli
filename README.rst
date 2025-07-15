@@ -52,6 +52,13 @@ NOTE: The jira section can contain additional sub-sections (listed later).
 Authentication
 --------------
 
+By default, *jiracli* will try to harvest the cookies from your running
+browser, as a way of quickly trying it out.  This method of
+authentication is called the **cookie_harvest** method type.  It is
+useful for quickly trying out *jcli* features, but the downside is that
+you'll need to use a web browser to authenticate when the authentication
+details are not available.
+
 You'll want to change the authentication information for actually
 accessing a JIRA instance.  Currently, the jira client library will support
 authentication by kerberos, or Personal Access Token.  Additionally, the
