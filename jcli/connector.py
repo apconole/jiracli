@@ -59,6 +59,38 @@ class JiraConnector(object):
         home_dir = os.path.expanduser("~")
         return os.path.join(home_dir, '.jira.yml')
 
+    def _config_get_nested(self, key_path):
+        config = self.config
+        keys = key_path.split(".")
+        for key in keys:
+            if isinstance(config, dict):
+                config = config.get(key)
+            else:
+                return None
+        return config
+
+    def _config_set_nested(self, key_path, value):
+        keys = key_path.split(".")
+        d = self.config
+        for key in keys[:-1]:
+            d = d.setdefault(key, {})
+        d[keys[-1]] = value
+        return True
+
+    def _config_clear_nested(self, key_path):
+        keys = key_path.split(".")
+        d = self.config
+        for key in keys[:-1]:
+            d = d.get(key)
+            if d is None:
+                return  # Key path doesn't exist
+        d.pop(keys[-1], None)
+
+    def _save_cfg(self):
+        os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+        with open(self.config_file, 'w') as f:
+            yaml.safe_dump(self.config, f)
+
     def _login(self):
 
         if self.jira is not None:

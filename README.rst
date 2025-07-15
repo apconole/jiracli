@@ -43,7 +43,11 @@ The *.jira.yml* file should contain a `jira:` section that looks like::
   jira:
     server: SERVER_URL
 
-It can contain additional sections (listed later).
+You can use the `config` command to help set this as well by running::
+
+  $ jcli config set jira.server SERVER_URL
+
+NOTE: The jira section can contain additional sub-sections (listed later).
 
 Authentication
 --------------
@@ -73,9 +77,16 @@ The JIRA client also supports authentication via Personal Access Token::
     username: my_username
     type: api
     pat: true
-      key: MY_PAT_KEY
+    key: MY_PAT_KEY
 
 The PAT key needs to be obtained via the web interface.
+
+You can also set these via the `config` command::
+
+  $ jcli config set auth.username my_username
+  $ jcli config set auth.type api
+  $ jcli config set auth.pat true
+  $ jcli config set auth.key MY_PAT_KEY
 
 Finally, to keep things a bit more private, the JiraCLI authentication
 block can reference netrc/authinfo.gpg files.  To use this for PAT
@@ -185,6 +196,11 @@ value of `0` will disable the ratelimiting feature.
 
 The ``wait_time`` setting will be the time to sleep when we need to
 ratelimit (specified in ms).  The default value is `500`.
+
+Additionally, you may use the `config` commands to set these values::
+
+  $ jcli config set jira.default.call_interval 500
+  $ jcli config set jira.default.wait_time 500
 
 Interfacing with issues
 -----------------------
