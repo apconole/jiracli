@@ -6,6 +6,7 @@ import click
 import logging
 
 from jcli import boards as boards_cmds
+from jcli import config as config_cmds
 from jcli import details as details_cmds
 from jcli import issues as issues_cmds
 from jcli import myself as my_cmds
@@ -32,6 +33,13 @@ def cli(ctx, debug, config):
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     else:
         logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+
+@cli.group()
+def config():
+    """Commands for interacting with the configuration.
+    """
+    pass
 
 
 @cli.group()
@@ -74,6 +82,10 @@ def utils():
 
 cli.add_command(my_cmds.login_cmd)
 cli.add_command(my_cmds.myself_cmd)
+
+config.add_command(config_cmds.clear_config_cmd)
+config.add_command(config_cmds.get_config_cmd)
+config.add_command(config_cmds.set_config_cmd)
 
 issues.add_command(issues_cmds.list_cmd)
 issues.add_command(issues_cmds.show_cmd)
