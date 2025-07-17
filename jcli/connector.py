@@ -524,7 +524,7 @@ class JiraConnector(object):
                 if fields[field].lower() != fieldname.lower():
                     continue
                 else:
-                    fieldname = fields[field]
+                    fieldname = field
             elif fields[field] != fieldname:
                 continue
 
@@ -553,6 +553,66 @@ class JiraConnector(object):
             return str(val)
         except:
             return "(unknown decode)"
+
+    def _get_field_allowed(self, issue, fieldname) -> list:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(issue, jira.resources.Issue):
+            issue = issue.key
+
+        meta = self.jira.editmeta(issue)
+        fields = meta['fields']
+        field = fields.get(fieldname)
+
+        if field and "allowedValues" in field:
+            result = []
+            for x in field["allowedValues"]:
+                parts = []
+                if x.get("name") is not None:
+                    parts.append(f"\"name\": \"{x['name']}\"")
+                if x.get("value") is not None:
+                    parts.append(f"\"value\": \"{x['value']}\"")
+                result.append(f"- {', '.join(parts)}")
+            return result
+        return None
+
+    def get_field_allowed(self, issue, fieldname, substruct=None) -> list:
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+
+        found = False
+        casecmp = bool(self.get_default_str('case_sensitive', "true"))
+        for rawfield in issue.raw['fields']:
+            if not casecmp:
+                if rawfield.lower() != fieldname.lower():
+                    continue
+                else:
+                    fieldname = rawfield
+                    found = True
+            elif rawfield != fieldname:
+                continue
+
+        if found:
+            return self._get_field_allowed(issue, fieldname)
+
+        fields = self._fetch_custom_fields()
+        for field in fields:
+            if not casecmp:
+                if fields[field].lower() != fieldname.lower():
+                    continue
+                else:
+                    fieldname = field
+                    found = True
+            elif fields[field] != fieldname:
+                continue
+
+        if found:
+            return self._get_field_allowed(issue, fieldname)
+        return None
 
     def find_users_for_name(self, name) -> list:
         """
@@ -654,7 +714,7 @@ class JiraConnector(object):
                 if fields[field].lower() != fieldname.lower():
                     continue
                 else:
-                    fieldname = fields[field]
+                    fieldname = field
             elif fields[field] != fieldname:
                 continue
 

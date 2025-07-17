@@ -621,7 +621,9 @@ def del_watcher_cmd(issuekey, watcher):
 )
 @click.argument('issuekey')
 @click.argument('fieldname')
-def get_field_cmd(issuekey, fieldname):
+@click.option("--allowed", is_flag=True, default=False,
+              help="Also displays the allowed values.")
+def get_field_cmd(issuekey, fieldname, allowed):
     """Get a field value from a JIRA issue.
 
     NOTE: In JIRA, field names are case sensitive, so double check that
@@ -632,6 +634,13 @@ def get_field_cmd(issuekey, fieldname):
     issue = jobj.get_issue(issuekey)
     field = jobj.get_field(issue, fieldname)
     click.echo(f"{fieldname}: {field}")
+    if allowed:
+        allowed_vals_str = jobj.get_field_allowed(issue, fieldname)
+        if allowed_vals_str:
+            for line in allowed_vals_str:
+                click.echo(line)
+        else:
+            click.echo("- No allowed values found.")
 
 
 @click.command(
