@@ -86,6 +86,7 @@ cli.add_command(my_cmds.myself_cmd)
 config.add_command(config_cmds.clear_config_cmd)
 config.add_command(config_cmds.get_config_cmd)
 config.add_command(config_cmds.set_config_cmd)
+config.add_command(config_cmds.append_config_cmd)
 
 issues.add_command(issues_cmds.list_cmd)
 issues.add_command(issues_cmds.show_cmd)

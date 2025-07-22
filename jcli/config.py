@@ -54,3 +54,32 @@ def set_config_cmd(key, value, forced):
     jobj._config_set_nested(key, value)
     jobj._save_cfg()
     click.echo(f"{key} = {value}")
+
+
+@click.command(name='append')
+@click.argument("key")
+@click.argument("value")
+@click.option("--forced", is_flag=True, default=False,
+              help="Pass 'value' to a python eval() before storing the value.")
+def append_config_cmd(key, value, forced):
+    """Append a configuration key to the value specified.
+
+    KEY is the dot-notation key in the yaml to set.  It will be created
+    if it doesn't already exist.
+
+    You can use the 'forced' flag to do complex python statements that will
+    be evaluated before writing.
+    """
+    jobj = connector.JiraConnector(load_safe=True)
+    if forced:
+        value = eval(value)
+    v = jobj._config_get_nested(key)
+    if v is None:
+        v = []
+    if not isinstance(v, list):
+        lst_tmp = [v]
+        v = lst_tmp
+    v.append(value)
+    jobj._config_set_nested(key, v)
+    jobj._save_cfg()
+    click.echo(f"{key} = {value}")
