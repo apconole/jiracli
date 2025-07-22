@@ -57,9 +57,9 @@ except:
 
 
 class JiraConnector(object):
-    def __init__(self, config_file=None):
+    def __init__(self, config_file=None, load_safe=False):
         self.config_file = config_file or self._default_config_file()
-        self.config = self._load_cfg()
+        self.config = self._load_cfg(load_safe)
         self.report_weights = None
         self.jira = None
         self.last_call_time = 0  # Store last call timestamp
@@ -79,7 +79,7 @@ class JiraConnector(object):
 
         self.last_call_time = elapsed_time
 
-    def _load_cfg(self):
+    def _load_cfg(self, load_safe):
         """Load a config yaml"""
         try:
             with open(self.config_file, 'r') as f:
@@ -87,9 +87,9 @@ class JiraConnector(object):
         except FileNotFoundError:
             config = {'jira': {}}
 
-        if 'jira' not in config:
+        if not load_safe and 'jira' not in config:
             raise ValueError("Missing jira section in config yaml")
-        if 'server' not in config['jira']:
+        if not load_safe and 'server' not in config['jira']:
             raise ValueError("Missing server for jira config yaml")
 
         return config

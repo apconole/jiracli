@@ -22,7 +22,7 @@ def get_config_cmd(key):
 
     KEY is the dot-notation key in the yaml.
     """
-    jobj = connector.JiraConnector()
+    jobj = connector.JiraConnector(load_safe=True)
 
     v = jobj._config_get_nested(key)
 
@@ -48,7 +48,7 @@ def set_config_cmd(key, value, forced):
     You can use the 'forced' flag to do complex python statements that will
     be evaluated before writing.
     """
-    jobj = connector.JiraConnector()
+    jobj = connector.JiraConnector(load_safe=True)
     if forced:
         value = eval(value)
     jobj._config_set_nested(key, value)
