@@ -249,6 +249,32 @@ class JiraConnector(object):
 
         return self.config['jira']['default'][key]
 
+    def load_renderer(self, render_text):
+        if not render_text or not len(render_text):
+            raise RuntimeError("Render text is 'none'")
+
+        allowed_builtins = {
+            "len": len,
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "sum": sum,
+            "min": min,
+            "max": max,
+            "re": re,
+            "sorted": sorted,
+            # Add more if needed
+        }
+
+        try:
+            render_func = eval(render_text, {"__builtins__": allowed_builtins}, {})
+            if not callable(render_func):
+                raise RuntimeError(f"Expr: {render_text} did not evaluate properly.")
+            return render_func
+        except Exception as e:
+            raise ValueError(f"Invalid expr: {e}")
+
     def myself(self):
         if self.jira is None:
             raise RuntimeError("Need to log-in first")
@@ -641,6 +667,25 @@ class JiraConnector(object):
             return str(val)
         except:
             return "(unknown decode)"
+
+    def get_field_rendered(self, issue, fieldname, substruct=None) -> str:
+
+        val = self.get_field(issue, fieldname, substruct)
+
+        # find the yaml for rendering the field
+        issues_config = self._config_get_nested("jira.issues")
+        if issues_config:
+            for field_conf in issues_config:
+                if 'field' not in field_conf:
+                    continue
+                issue_conf = field_conf['field']
+                if 'name' not in issue_conf or \
+                   issue_conf['name'].lower() != fieldname.lower():
+                    continue
+                if 'render' in issue_conf:
+                    rendered = self.load_renderer(issue_conf['render'])
+                    val = rendered(val)
+        return val
 
     def _get_field_allowed(self, issue, fieldname) -> list:
         if self.jira is None:

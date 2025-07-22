@@ -181,6 +181,22 @@ By default, all of the fields above are included in the issue
 display, so you will require changes to the yaml file in order
 to disable them.
 
+Additionally, you can modify how a field is rendered during `show`
+command execution by adding the **render:** attribute with a
+lambda function.  Example::
+
+  jira:
+    issues:
+    - field:
+        name: Some Field
+        render: >
+          lambda s: ', '.join([m.group(1).strip()
+                               for m in re.finditer(r'state=([^,]+),))
+
+This can help when fields have complex details that you want to
+view in a more processed way.  The render code should be written
+in python, and not all python builtins are available.
+
 JIRA Ratelimiting
 -----------------
 

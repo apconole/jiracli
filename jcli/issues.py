@@ -273,17 +273,17 @@ def show_cmd(issuekey, raw, width, json):
     excluded = jobj.excluded_fields()
 
     output = "+" + '-' * (max_width - 2) + "+\n"
-    pname = jobj.get_field(issue, 'project', 'name')
-    aname = jobj.get_field(issue, 'assignee', 'name')
+    pname = jobj.get_field_rendered(issue, 'project', 'name')
+    aname = jobj.get_field_rendered(issue, 'assignee', 'name')
 
     output += f"| {issue.key:<10} | {pname:<20} | {aname:<39} |\n"
     output += "+" + '-' * (max_width - 2) + "+\n"
-    prio = jobj.get_field(issue, 'priority', 'name')
-    status = jobj.get_field(issue, 'status', 'name')
+    prio = jobj.get_field_rendered(issue, 'priority', 'name')
+    status = jobj.get_field_rendered(issue, 'status', 'name')
 
-    summ = jobj.get_field(issue, 'summary')
+    summ = jobj.get_field_rendered(issue, 'summary')
 
-    reporter = jobj.get_field(issue, 'reporter', 'name')
+    reporter = jobj.get_field_rendered(issue, 'reporter', 'name')
 
     output += f"| priority: {prio:<20} | status: {status:<34} |\n"
     output += "+" + '-' * (max_width - 2) + "+\n"
@@ -299,7 +299,7 @@ def show_cmd(issuekey, raw, width, json):
         output += f"| ------- {' ' * (max_width - 12)} |\n"
 
     for issue_field in jobj.requested_fields():
-        output += f"| {issue_field:<25}: {jobj.get_field(issue, issue_field):<{max_width - 31}} |\n"
+        output += f"| {issue_field:<25}: {jobj.get_field_rendered(issue, issue_field):<{max_width - 31}} |\n"
 
     if len(summ) <= max_width - 4:
         output += f"| {summ:<{max_width - 4}} |\n"
@@ -379,7 +379,8 @@ def show_cmd(issuekey, raw, width, json):
                          'psql')
         output += final + "\n\n"
 
-    descr = jobj.jira_text_field_to_md(jobj.get_field(issue, 'description'))
+    descr = jobj.jira_text_field_to_md(jobj.get_field_rendered(issue,
+                                                               'description'))
     if 'description' not in excluded and len(descr) > 0:
         output += f"| Description: {' ' * (max_width - 17)} |\n"
         output += f"|{'-' * (max_width - 2)}|\n"
