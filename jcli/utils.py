@@ -240,8 +240,8 @@ def jira_to_md(text):
     text, all_blocks = extract_protected_blocks(text, 'code(:[a-zA-Z0-9]+)?', all_blocks)
 
     # Convert lists (need to do this before headers)
-    text = re.sub(r'^\*\s*(.*?)$', r'- \1', text, flags=re.MULTILINE)
-    text = re.sub(r'^#\s*(.*?)$', r'1. \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^\*\s+(.*?)$', r'- \1', text, flags=re.MULTILINE)
+    text = re.sub(r'^#\s+(.*?)$', r'1. \1', text, flags=re.MULTILINE)
 
     # Convert headers
     text = re.sub(r'^h1\.\s*(.*?)$', r'# \1', text, flags=re.MULTILINE)
@@ -249,8 +249,8 @@ def jira_to_md(text):
     text = re.sub(r'^h3\.\s*(.*?)$', r'### \1', text, flags=re.MULTILINE)
 
     # Convert bold and italics
-    text = re.sub(r'\*(.*?)\*', r'**\1**', text)
-    text = re.sub(r'_(.*?)_', r'*\1*', text)
+    text = re.sub(r'([^a-zA-Z0-9()+-\.=\[\]]+)\*([a-zA-Z0-9\.+-]+)\*', r'\1**\2**', text)
+    text = re.sub(r'([^a-zA-Z0-9()+-\.=\[\]]+)_([a-zA-Z0-9\.+-]+)_', r'\1*\2*', text)
 
     # Convert inline code
     text = re.sub(r'{{(.*?)}}', r'`\1`', text)
@@ -311,8 +311,8 @@ def md_to_jira(text):
     text = re.sub(r'^###\s*(.*?)$', r'h3. \1', text, flags=re.MULTILINE)
 
     # Convert bold and italics
-    text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
-    text = re.sub(r'\*(.*?)\*', r'_\1_', text)
+    text = re.sub(r'([^a-zA-Z0-9()+-\.=\[\]\*]+)\*([^*]+)\*', r'\1_\2_', text)
+    text = re.sub(r'([^a-zA-Z0-9()+-\.=\[\]]+)\*\*(.+)\*\*', r'\1*\2*', text)
 
     # Convert inline code and code blocks
     text = re.sub(r'`(.*?)`', r'{{\1}}', text)

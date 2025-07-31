@@ -81,7 +81,8 @@ Looking at the code, we see::
 if (hokey)
     self.turn_about()
 {code}
-However, the hokey flag never seems to have gotten cleared.
+However, the hokey flag never seems to have gotten cleared.  We can see from the turn_about() function that _sometimes_ it works but detect_that_we_turned_around() doesn't always work.
+*important* we can verify this with a good test.
 I pulled the details from [here|https://www.example.com/hokey-pokey-spec/2025/01/01/spec.txt] and the pdf [here|ftp://www.example.com/hokey-pokey-spec/2025/01/01/spec.pdf]
 """
 
@@ -101,7 +102,8 @@ if (hokey)
     self.turn_about()
 
 ```
-However, the hokey flag never seems to have gotten cleared.
+However, the hokey flag never seems to have gotten cleared.  We can see from the turn_about() function that *sometimes* it works but detect_that_we_turned_around() doesn't always work.
+**important** we can verify this with a good test.
 I pulled the details from [here](https://www.example.com/hokey-pokey-spec/2025/01/01/spec.txt) and the pdf [here](ftp://www.example.com/hokey-pokey-spec/2025/01/01/spec.pdf)
 """
 
