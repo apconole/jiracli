@@ -1095,7 +1095,22 @@ class JiraConnector(object):
 
         try:
             self._ratelimit()
-            sprints = self.jira.sprints(board.raw['id'])
+
+            start_at = 0
+            max_results = 50
+
+            while True:
+                sprints = self.jira.sprints(board.raw['id'], startAt=start_at,
+                                            maxResults=max_results)
+                if not sprints:
+                    break
+                for sprint in sprints:
+                    yield sprint
+                if len(sprints) < max_results:
+                    return None
+
+                start_at += max_results
+
         except JIRAError:
             # not all boards support sprints, so ignore it
             sprints = []
@@ -1155,13 +1170,6 @@ class JiraConnector(object):
         issues_in_epics = self._query_issues(query, issue_offset, max_issues)
 
         return issues_in_epics
-
-    def fetch_sprints_for_board(self, board, states=None) -> dict:
-        if self.jira is None:
-            raise RuntimeError("Need to log-in first.")
-        self._ratelimit()
-        result = self.jira.sprints(board, None, 0, 50, states)
-        return result
 
     def fetch_column_config_by_board(self, board) -> dict:
         if self.jira is None:
