@@ -782,6 +782,9 @@ class JiraConnector(object):
         if isinstance(var_instance, list):
             return [{"name": value}]
 
+        if isinstance(var_instance, str):
+            return str(value)
+
         try:
             if 'name' in var_instance:
                 return {"name": value}
@@ -840,6 +843,7 @@ class JiraConnector(object):
             else:
                 val = eval(val)
             issue_dict = {fieldname: val}
+            break
 
         fields = self._fetch_custom_fields()
         for field in fields:
