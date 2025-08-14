@@ -840,6 +840,7 @@ class JiraConnector(object):
             else:
                 val = eval(val)
             issue_dict = {fieldname: val}
+            break
 
         fields = self._fetch_custom_fields()
         for field in fields:
