@@ -782,6 +782,9 @@ class JiraConnector(object):
         if isinstance(var_instance, list):
             return [{"name": value}]
 
+        if isinstance(var_instance, str):
+            return str(value)
+
         try:
             if 'name' in var_instance:
                 return {"name": value}
