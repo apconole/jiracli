@@ -679,7 +679,7 @@ class JiraConnector(object):
                 if 'field' not in field_conf:
                     continue
                 issue_conf = field_conf['field']
-                if 'name' not in issue_conf or \
+                if not issue_conf or 'name' not in issue_conf or \
                    issue_conf['name'].lower() != fieldname.lower():
                     continue
                 if 'render' in issue_conf:
