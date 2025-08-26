@@ -27,6 +27,7 @@ Adrian Moreno               amorenoz@redhat.com
 Chris Van Hoof              vanhoof@ouwish.com
 Marcelo Leitner             mleitner@redhat.com
 Mark Michelson              mmichels@redhat.com
+Ondrej Lichtner             olichtne@redhat.com
 ==========================  =================================================
 
 The following additional people are mentioned during code submission has having
