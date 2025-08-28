@@ -25,4 +25,9 @@ def users_find_cmd(by, json, user):
         click.echo(f"Found {len(userlist)} users.")
         click.echo(f"{userlist}")
     else:
-        click.echo(f"{JSON.dumps(userlist)}")
+        users = []
+        for user in userlist:
+            userD = {"name": user.displayName, "username": user.name,
+                     "id": user.key}
+            users.append(userD)
+        click.echo(f"{JSON.dumps(users)}")
