@@ -1,5 +1,6 @@
 import click
 from jcli import connector
+import json as JSON
 import pprint
 
 
@@ -90,3 +91,26 @@ def dump_project_versions_cmd(project):
 
     click.echo(pprint.pformat([x.name
                                for x in jobj.jira.project_versions(project)]))
+
+
+@click.command("field-types")
+@click.option("--json", is_flag=True, default=False,
+              help="Output details in json rather than as python format.")
+@click.option("--names", is_flag=True, default=False,
+              help="Output details in json rather than as python format.")
+def dump_field_types_cmd(json, names):
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    field_mappings = jobj._fetch_field_type_mapping()
+
+    if names:
+        mappings = field_mappings
+        field_mappings = {}
+        for k, v in mappings.items():
+            field_mappings[jobj._fetch_custom_fields().get(k)] = v
+
+    if not json:
+        click.echo(field_mappings)
+    else:
+        click.echo(JSON.dumps(field_mappings))
