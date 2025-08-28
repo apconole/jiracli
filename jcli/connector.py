@@ -893,6 +893,8 @@ class JiraConnector(object):
 
         if field_type == "string":
             return field_value
+        elif field_type == "option":
+            return {"value": field_value}
         elif field_type == "dict":
             if ':' not in field_value:
                 return {"name": field_value}
