@@ -37,6 +37,7 @@ provided helpful bug reports, suggestions, or additional testing.
 Name                        Email
 ==========================  =================================================
 Adrian Moreno               amorenoz@redhat.com
+Bryan Gurney                bgurney@redhat.com
 Christian Trautman          ctrautma@redhat.com
 Eelco Chaudron              echaudro@redhat.com
 Flavio Leitner              fbl@sysclose.org
