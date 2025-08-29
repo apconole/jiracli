@@ -28,7 +28,10 @@ try:
             server_info = server_info[7:]
         for check in [browser_cookie3.chrome, browser_cookie3.chromium,
                       browser_cookie3.firefox]:
-            cookies = check(domain_name=server_info)
+            try:
+                cookies = check(domain_name=server_info)
+            except:
+                cookies = []
             for cookie in cookies:
                 if cookie.name in ['DWRSESSIONID', 'JSESSIONID',
                                    'JiraSDSamlssoLoginV2']:
