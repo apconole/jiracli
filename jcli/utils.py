@@ -154,7 +154,8 @@ def get_text_via_editor(starting_text=None) -> str:
         temp_file.close()  # Close the file so it can be opened by the text editor
 
         # Launch the default text editor for the user to write the comment
-        subprocess.run([os.environ.get('EDITOR', 'nano'), temp_file.name])
+        subprocess.run(os.environ.get('EDITOR', 'nano') + " " + temp_file.name,
+                       shell=True)
 
         # Read the contents of the edited file
         with open(temp_file.name, 'r') as edited_file:
