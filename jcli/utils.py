@@ -139,6 +139,10 @@ def _display_via_pager(pager, output):
 
 
 def display_via_pager(output, title=None):
+    if not sys.stdout.isatty():
+        sys.stdout.write(output)
+        return
+
     if title:
         click.echo(f"\033]0;{title}\007", nl=False)  # Set terminal title
 
