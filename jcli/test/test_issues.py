@@ -145,7 +145,34 @@ def test_reply_to_cmd(cli_runner):
             result = cli_runner.invoke(add_comment_cmd, [issue['key'],
                                                          '--in-reply-to', cid],
                                        env={"EDITOR": 'vim'})
-            assert 'vim' == mock_run.call_args_list[0][0][0][0]
+            if isinstance(mock_run.call_args_list[0][0][0], str):
+                assert 'vim' == mock_run.call_args_list[0][0][0].split()[0]
+            else:
+                assert 'vim' == mock_run.call_args_list[0][0][0][0]
+            assert result.stdout_bytes == b'Error: No comment provided.\n'
+            assert result.exit_code == 1
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_editor_with_args(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+    s = JiraConnectorStub()
+    for _ in range(random.randint(1, 100)):
+        JiraConnectorStub.setup_add_random_issue()
+
+    for issue in s._query_issues("", 0, 10):
+        with patch("subprocess.run") as mock_run:
+            result = cli_runner.invoke(add_comment_cmd, [issue['key']],
+                                       env={"EDITOR": 'vim -d --noplugin'})
+
+            if isinstance(mock_run.call_args_list[0][0][0], str):
+                result_str = mock_run.call_args_list[0][0][0]
+            else:
+                result_str = mock_run.call_args_list[0][0][0][0]
+
+            assert 'vim' == result_str.split()[0]
+            assert '-d' == result_str.split()[1]
+            assert '--noplugin' == result_str.split()[2]
             assert result.stdout_bytes == b'Error: No comment provided.\n'
             assert result.exit_code == 1
 
