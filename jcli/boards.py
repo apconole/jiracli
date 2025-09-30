@@ -255,3 +255,85 @@ def create_sprint_cmd(board, name, start_date, end_date, goal):
         click.echo(f"Sprint {s['id']} created.")
     else:
         click.echo(f"Error creating sprint '{name}'.")
+
+
+@click.command("autoexec")
+@click.argument("boardname")
+@click.argument("source_sprint")
+@click.argument("destination_sprint")
+@click.option("--run", type=bool, default=False, help="Actually make the changes.")
+def autoexec_cmd(boardname, source_sprint, destination_sprint, run):
+    """
+    Automatically close tickets labeled as 'auto-close' and recreate tickets
+    labeled as 'recurring'.
+    """
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    sprints = jobj.fetch_sprints_by_board(boardname)
+
+    old_sprint = None
+    new_sprint = None
+
+    for sprint in sprints:
+        if sprint.name == source_sprint:
+            if old_sprint is not None:
+                click.echo(f"Found multiple {source_sprint}")
+                return
+            old_sprint = sprint
+        elif sprint.name == destination_sprint:
+            if new_sprint is not None:
+                click.echo(f"Found multiple {destination_sprint}")
+                return
+            new_sprint = sprint
+
+    if old_sprint is None:
+        click.echo(f"Could not find {source_sprint}")
+        return
+
+    if new_sprint is None:
+        click.echo(f"Could not find {destination_sprint}")
+        return
+
+    # Handle close issues
+    issues = jobj._query_issues(f"sprint = {old_sprint.id} AND labels = auto-close")
+    for issue in issues:
+        click.echo(f'Closing {issue.key} - {jobj.get_field(issue, "summary")}')
+        if run is not True:
+            continue
+
+        jobj.set_state_for_issue(issue.key, "Closed")
+
+    # Handle recurring issues
+    issues = jobj._query_issues(f"sprint = {old_sprint.id} AND labels = recurring")
+    fields = jobj._fetch_custom_fields()
+    for issue in issues:
+        click.echo(f'Recreating {issue.key} - {jobj.get_field(issue, "summary")}')
+        if run is not True:
+            continue
+
+        new_issue = {}
+        new_issue["project"] = issue.fields.project.key
+        new_issue["summary"] = jobj._get_field(issue, "summary")
+        new_issue["description"] = jobj._get_field(issue, "description")
+        new_issue["status"] = jobj._get_field(issue, "status")
+        new_issue["issuetype"] = {"name": jobj._get_field(issue, "issuetype")}
+        new_issue["creator"] = {"accountId": issue.fields.creator.key}
+        new_issue["assignee"] = {"accountId": issue.fields.assignee.key}
+
+        for field_id, field_name in fields:
+            if field_name == "Sprint":
+                new_issue[field_id] = {"id": new_sprint.id}
+            elif field_name in ["Story Points", "components"]:
+                new_issue[field_id] = jobj._get_field(issue, field_name)
+            elif field_name in ["OS", "AssignedTeam"]:
+                new_issue[field_id] = {"id": jobj._get_field(issue, field_name).id}
+            elif field_name == "Sub-System Group":
+                ssg = jobj._get_field(issue, "Sub-System Group")
+                if isinstance(ssg, list) and len(ssg) > 0:
+                    new_issue[field_id] = [{"id": ssg[0].id}]
+
+        create_result = jobj.create_issue(new_issue)
+        jobj.set_state_for_issue(issue, "Done")
+
+        click.echo(f"\t{issue.key} -> {create_result.key}")
