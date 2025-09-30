@@ -45,14 +45,15 @@ def is_issue_in_column(issue, column_statuses, jobj):
 )
 @click.option("--limit", type=int, default=25,
               help="Limit the number of entries to display (default 25)")
-def list_cmd(limit):
+@click.option("--name", type=str, default=None, help="Search for a board by name")
+def list_cmd(limit, name):
     """
     Displays all the boards on the instance (can be crazy)
     """
     jobj = connector.JiraConnector()
     jobj.login()
 
-    boards = jobj.fetch_boards(limit)
+    boards = jobj.fetch_boards(limit, name)
 
     boards_out = []
 
