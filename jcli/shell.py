@@ -118,6 +118,7 @@ boards.add_command(boards_cmds.list_cmd)
 boards.add_command(boards_cmds.show_cmd)
 boards.add_command(boards_cmds.get_config_cmd)
 boards.add_command(boards_cmds.sprints_cmd)
+boards.add_command(boards_cmds.autoexec_cmd)
 
 users.add_command(users_cmds.users_find_cmd)
 
