@@ -1064,16 +1064,16 @@ class JiraConnector(object):
 
         return result
 
-    def fetch_boards(self, limit=0) -> list:
+    def fetch_boards(self, limit=0, name=None) -> list:
         """Try to get all the boards configured in jira"""
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
         self._ratelimit()
         if limit > 0:
-            return self.jira.boards(0, limit)
+            return self.jira.boards(startAt=0, maxResults=limit, name=name)
 
-        return self.jira.boards(0, 0)
+        return self.jira.boards(startAt=0, maxResults=0, name=name)
 
     def fetch_board_by_name(self, boardname):
         if self.jira is None:
