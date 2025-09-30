@@ -159,7 +159,6 @@ def sprints_cmd(boardname, name, show_all, my_issues, no_issues, json):
     jobj.login()
 
     sprints = jobj.fetch_sprints_by_board(boardname)
-    base_filter = jobj.fetch_jql_config_by_board(boardname)
     columns = jobj.fetch_column_config_by_board(boardname)
     ISSUE_HEADER = [column for column in columns]
 
@@ -193,7 +192,7 @@ def sprints_cmd(boardname, name, show_all, my_issues, no_issues, json):
             current_sprint["start_date_str"] = start_date
             current_sprint["end_date_str"] = end_date
 
-        issues_query = f'sprint = "{str(sprint)}" and {base_filter}'
+        issues_query = f'sprint = {sprint.id}'
         if not no_issues:
             issues = jobj._query_issues(issues_query, 0, 250)
         else:
