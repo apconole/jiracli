@@ -3,6 +3,7 @@ import json as JSON
 import logging
 import pprint
 
+import jira
 from jcli import connector
 from jcli.utils import display_via_pager
 from jcli.utils import issue_eval
@@ -261,7 +262,7 @@ def create_sprint_cmd(board, name, start_date, end_date, goal):
 @click.argument("boardname")
 @click.argument("source_sprint")
 @click.argument("destination_sprint")
-@click.option("--run", type=bool, default=False, help="Actually make the changes.")
+@click.option("--run", type=bool, is_flag=True, default=False, help="Actually make the changes.")
 def autoexec_cmd(boardname, source_sprint, destination_sprint, run):
     """
     Automatically close tickets labeled as 'auto-close' and recreate tickets
@@ -295,45 +296,97 @@ def autoexec_cmd(boardname, source_sprint, destination_sprint, run):
         click.echo(f"Could not find {destination_sprint}")
         return
 
-    # Handle close issues
-    issues = jobj._query_issues(f"sprint = {old_sprint.id} AND labels = auto-close")
-    for issue in issues:
-        click.echo(f'Closing {issue.key} - {jobj.get_field(issue, "summary")}')
-        if run is not True:
-            continue
+    default_actions = {
+        "auto-close": {
+            "recreate": False,
+            "status": "Closed"
+        },
+        "recurring": {
+            "recreate": True,
+            "status": "Closed",
+            "copy-fields": [
+                "Story Points",
+                "components",
+                "OS",
+                "AssignedTeam",
+                "Sub-System Group",
+                "security"
+            ]
+        },
+        "template": {
+            "recreate": True,
+            "status": "Closed",
+            "copy-fields": [
+                "components",
+                "OS",
+                "AssignedTeam",
+                "Sub-System Group"
+            ],
+            "default-fields": {
+                "Story Points": 5.0
+            }
+        }
+    }
 
-        jobj.set_state_for_issue(issue.key, "Closed")
-
-    # Handle recurring issues
-    issues = jobj._query_issues(f"sprint = {old_sprint.id} AND labels = recurring")
+    actions = jobj.config.get("auto_exec") or default_actions
     fields = jobj._fetch_custom_fields()
-    for issue in issues:
-        click.echo(f'Recreating {issue.key} - {jobj.get_field(issue, "summary")}')
-        if run is not True:
-            continue
 
-        new_issue = {}
-        new_issue["project"] = issue.fields.project.key
-        new_issue["summary"] = jobj._get_field(issue, "summary")
-        new_issue["description"] = jobj._get_field(issue, "description")
-        new_issue["status"] = jobj._get_field(issue, "status")
-        new_issue["issuetype"] = {"name": jobj._get_field(issue, "issuetype")}
-        new_issue["creator"] = {"accountId": issue.fields.creator.key}
-        new_issue["assignee"] = {"accountId": issue.fields.assignee.key}
+    def _field_xlate(val):
+        """ Translate from JIRA custom fields into create issue field. """
+        if isinstance(val, list):
+            return list(map(_field_xlate, val))
 
-        for field_id, field_name in fields:
-            if field_name == "Sprint":
-                new_issue[field_id] = {"id": new_sprint.id}
-            elif field_name in ["Story Points", "components"]:
-                new_issue[field_id] = jobj._get_field(issue, field_name)
-            elif field_name in ["OS", "AssignedTeam"]:
-                new_issue[field_id] = {"id": jobj._get_field(issue, field_name).id}
-            elif field_name == "Sub-System Group":
-                ssg = jobj._get_field(issue, "Sub-System Group")
-                if isinstance(ssg, list) and len(ssg) > 0:
-                    new_issue[field_id] = [{"id": ssg[0].id}]
+        # translate classes
+        if isinstance(val, jira.resources.CustomFieldOption):
+            val = val.raw
+        elif isinstance(val, jira.resources.User):
+            return {"accountId", val.key}
 
-        create_result = jobj.create_issue(new_issue)
-        jobj.set_state_for_issue(issue, "Done")
+        if isinstance(val, str):
+            return val
+        elif isinstance(val, dict):
+            if "id" in val:
+                return {"id": val['id']}
+            elif "key" in val:
+                return {"key": val['key']}
 
-        click.echo(f"\t{issue.key} -> {create_result.key}")
+        # Default action
+        return val
+
+    for label, action in actions.items():
+        issues = jobj._query_issues(f"sprint = {old_sprint.id} AND labels = {label} AND status != {action['status']}")
+        for issue in issues:
+            click.echo(f'Processing {issue.key} - {jobj.get_field(issue, "summary")} - with label {label}')
+            if run is not True:
+                continue
+
+            if action.get("recreate", False) is True:
+                new_issue = {}
+                new_issue["project"] = issue.fields.project.key
+                new_issue["summary"] = jobj._get_field(issue, "summary")
+                new_issue["description"] = jobj._get_field(issue, "description")
+                new_issue["issuetype"] = {"name": jobj._get_field(issue, "issuetype")}
+                new_issue["assignee"] = {"name": issue.fields.assignee.name}
+
+                for field_id, field_name in fields.items():
+                    if field_name == "Sprint":
+                        new_issue[field_id] = new_sprint.id
+                        continue
+
+                    for copy_field in action.get("copy-fields", []):
+                        if field_name != copy_field:
+                            continue
+                        cur_val = jobj._get_field(issue, field_name)
+                        new_issue[field_id] = _field_xlate(cur_val)
+
+                    for default_field, default_value in action.get("default-fields", {}).items():
+                        if field_name != default_field:
+                            continue
+                        new_issue[field_id] = default_value
+
+                create_result = jobj.create_issue(new_issue)
+                jobj.set_state_for_issue(create_result.key, jobj._get_field(issue, "status"))
+                click.echo(f"\t{issue.key} -> {create_result.key}")
+
+            jobj.set_state_for_issue(issue.key, action['status'])
+            click.echo(f"\t{issue.key} -> {action['status']}")
