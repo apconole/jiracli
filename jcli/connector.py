@@ -1126,7 +1126,7 @@ class JiraConnector(object):
 
         return sprints
 
-    def _fetch_board_config_object(self, board):
+    def _fetch_board_object(self, board):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
@@ -1145,6 +1145,21 @@ class JiraConnector(object):
             if not found:
                 raise ValueError(f"Invalid results for {name} - ambiguous?")
             board = found
+        elif isinstance(board, jira.resources.Board):
+            pass
+        elif isinstance(board, int):
+            board = self.jira._fetch_pages(jira.resources.Board, None,
+                                           f"board/{board}")
+        else:
+            raise RuntimeError(f"Unknown board type {type(board)}")
+
+        return board
+
+    def _fetch_board_config_object(self, board):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        board = self._fetch_board_object(board)
 
         # Got the board ID - let's get the REST details
         # Don't look at this too long .. it will make you sad.
@@ -1207,21 +1222,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        if isinstance(board, str):
-            name = board
-            board = self.fetch_board_by_name(name)
-            found = None
-            if len(board) != 1:
-                # cycle through and see if there is a real result with this name
-                for b in board:
-                    if b.name == name:
-                        found = b
-            else:
-                found = board[0]
-
-            if not found:
-                raise ValueError(f"Invalid results for {name} - ambiguous?")
-            board = found
+        board = self._fetch_board_object(board)
 
         # Boards are a total hack, and this is also sad.
         # Rather than a direct link somewhere to quickfilters, we need to
@@ -1236,21 +1237,7 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        if isinstance(board, str):
-            name = board
-            board = self.fetch_board_by_name(name)
-            found = None
-            if len(board) != 1:
-                # cycle through and see if there is a real result with this name
-                for b in board:
-                    if b.name == name:
-                        found = b
-            else:
-                found = board[0]
-
-            if not found:
-                raise ValueError(f"Invalid results for {name} - ambiguous?")
-            board = found
+        board = self._fetch_board_object(board)
 
         fid = None
         filts = self.fetch_quickfilters_by_board(board)
@@ -1280,6 +1267,16 @@ class JiraConnector(object):
         result = self.jira.create_issue(issue_dict)
         self.last_issue = result
         return result
+
+    def create_sprint(self, board, name, start_date=None, end_date=None, goal=None):
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        board = self._fetch_board_object(board)
+
+        sprint = self.jira.create_sprint(name, board.raw['id'], start_date,
+                                         end_date, goal)
+        return sprint
 
     def _find_users_by_key(self, key):
         user = User(self.jira._options, self.jira._session, _query_param='key')

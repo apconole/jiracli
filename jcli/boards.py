@@ -231,3 +231,27 @@ def sprints_cmd(boardname, name, show_all, my_issues, no_issues, json):
         click.echo(final_output)
     else:
         click.echo(JSON.dumps(json_sprints))
+
+
+@click.command("create-sprint")
+@click.argument("board")
+@click.argument("name")
+@click.option("--start-date", type=click.DateTime(),
+              help="Starting date for the sprint", default=None)
+@click.option("--end-date", type=click.DateTime(),
+              help="Ending date for the sprint", default=None)
+@click.option("--goal", type=str,
+              help="Sprint Goal.", default=None)
+def create_sprint_cmd(board, name, start_date, end_date, goal):
+    """
+    Creates a sprint for BOARD called NAME.
+    """
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    s = jobj.create_sprint(board, name, start_date, end_date, goal)
+
+    if s:
+        click.echo(f"Sprint {s['id']} created.")
+    else:
+        click.echo(f"Error creating sprint '{name}'.")
