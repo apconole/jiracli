@@ -125,7 +125,12 @@ class JiraConnectorStub(JiraConnector):
                      {"key": "d", "name": "d@a.com", "displayName": "D D"},
                      {"key": "e", "name": "e@a.com", "displayName": "E E"}]
 
-        assignee = random.choice(assignees)
+        assignee_dict = random.choice(assignees)
+        assignee = JiraAuthorStub()
+        assignee['key'] = assignee_dict['key']
+        assignee['name'] = assignee_dict['name']
+        assignee['displayName'] = assignee_dict['displayName']
+
         f = JiraFieldStub()
         f['priority'] = {"name": prio}
         f['summary'] = random_summary
@@ -135,6 +140,8 @@ class JiraConnectorStub(JiraConnector):
         f['Component'] = "component"
         issue.raw['fields'] = f
         issue["key"] = issue_tag
+        issue["summary"] = random_summary
+        issue["statusId"] = random.randint(0, 3)
 
         JiraConnectorStub._issues_list.append(issue)
 
@@ -222,3 +229,114 @@ class JiraConnectorStub(JiraConnector):
         JiraConnectorStub._last_comment_reply = f"> {comment.body}"
 
         return JiraConnectorStub._last_comment_reply
+
+    def fetch_boards(self, limit=25):
+        """Return stub boards for testing"""
+        boards = []
+        board_names = ["Sprint Board", "Kanban Board", "Support Board",
+                       "Development Board", "QA Board"]
+        board_types = ["scrum", "kanban", "simple"]
+
+        for i in range(min(limit, len(board_names))):
+            board = JiraFieldStub()
+            board['raw'] = {
+                'id': i + 1,
+                'name': board_names[i],
+                'type': random.choice(board_types)
+            }
+            boards.append(board)
+
+        return boards
+
+    def fetch_column_config_by_board(self, board_name):
+        """Return stub column configuration for a board"""
+        columns = {
+            "To Do": [{"name": "To Do"}, {"name": "New"}],
+            "In Progress": [{"name": "In Progress"}, {"name": "Progressing"}],
+            "Testing": [{"name": "Testing"}, {"name": "Verified"}],
+            "Done": [{"name": "Done"}, {"name": "Closed"}]
+        }
+        return columns
+
+    def fetch_issues_by_board(self, board_name, offset=0, max_issues=100):
+        """Return stub issues for a board"""
+        return self._query_issues("", offset, max_issues)
+
+    def fetch_issues_by_board_qf(self, board_name, offset=0, max_issues=100, quick_filter=None):
+        """Return stub issues for a board with quick filter"""
+        return self._query_issues("", offset, max_issues)
+
+    def fetch_jql_config_by_board(self, board_name):
+        """Return stub JQL configuration for a board"""
+        return 'project = "TEST" AND status != "Closed"'
+
+    def fetch_quickfilters_by_board(self, board_name):
+        """Return stub quick filters for a board"""
+        qf = JiraFieldStub()
+        qf['quickFilters'] = []
+
+        filter1 = JiraFieldStub()
+        filter1['name'] = "My Issues"
+        filter1['query'] = "assignee = currentUser()"
+        filter1['id'] = "1"
+        qf['quickFilters'].append(filter1)
+
+        filter2 = JiraFieldStub()
+        filter2['name'] = "High Priority"
+        filter2['query'] = "priority = High"
+        filter2['id'] = "2"
+        qf['quickFilters'].append(filter2)
+
+        return qf
+
+    def fetch_sprints_by_board(self, board_name):
+        """Return stub sprints for a board"""
+        sprints = []
+
+        # Active sprint
+        sprint1 = JiraFieldStub()
+        sprint1['id'] = 1
+        sprint1['name'] = "Sprint 1"
+        sprint1['state'] = "active"
+        sprint1['startDate'] = "2025-10-01T00:00:00.000Z"
+        sprint1['endDate'] = "2025-10-14T23:59:59.999Z"
+        sprints.append(sprint1)
+
+        # Future sprint
+        sprint2 = JiraFieldStub()
+        sprint2['id'] = 2
+        sprint2['name'] = "Sprint 2"
+        sprint2['state'] = "future"
+        sprints.append(sprint2)
+
+        # Closed sprint
+        sprint3 = JiraFieldStub()
+        sprint3['id'] = 3
+        sprint3['name'] = "Sprint 0"
+        sprint3['state'] = "closed"
+        sprint3['startDate'] = "2025-09-17T00:00:00.000Z"
+        sprint3['endDate'] = "2025-09-30T23:59:59.999Z"
+        sprints.append(sprint3)
+
+        return sprints
+
+    def create_sprint(self, board_name, sprint_name, start_date=None, end_date=None, goal=None):
+        """Create a stub sprint"""
+        return {
+            'id': random.randint(100, 999),
+            'name': sprint_name,
+            'state': 'future',
+            'startDate': start_date.isoformat() + 'Z' if start_date else None,
+            'endDate': end_date.isoformat() + 'Z' if end_date else None,
+            'goal': goal
+        }
+
+    def get_status_detail(self, status_id):
+        """Return stub status detail"""
+        statuses = [
+            {"name": "To Do"},
+            {"name": "In Progress"},
+            {"name": "Testing"},
+            {"name": "Done"}
+        ]
+        return statuses[status_id % len(statuses)]
