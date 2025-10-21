@@ -310,7 +310,8 @@ def autoexec_cmd(boardname, source_sprint, destination_sprint, run):
                 "OS",
                 "AssignedTeam",
                 "Sub-System Group",
-                "security"
+                "security",
+                "labels"
             ]
         },
         "template": {
@@ -330,6 +331,7 @@ def autoexec_cmd(boardname, source_sprint, destination_sprint, run):
 
     actions = jobj.config.get("auto_exec") or default_actions
     fields = jobj._fetch_custom_fields()
+    inv_fields = {v: k for k, v in fields.items()}
 
     def _field_xlate(val):
         """ Translate from JIRA custom fields into create issue field. """
@@ -367,22 +369,20 @@ def autoexec_cmd(boardname, source_sprint, destination_sprint, run):
                 new_issue["description"] = jobj._get_field(issue, "description")
                 new_issue["issuetype"] = {"name": jobj._get_field(issue, "issuetype")}
                 new_issue["assignee"] = {"name": issue.fields.assignee.name}
-
-                for field_id, field_name in fields.items():
-                    if field_name == "Sprint":
-                        new_issue[field_id] = new_sprint.id
+                new_issue[inv_fields["Sprint"]] = new_sprint.id
+                field_map = issue.fields.__dict__
+                for copy_field in action.get("copy-fields", []):
+                    if copy_field in inv_fields:
+                        copy_field = inv_fields[copy_field]
+                    if copy_field not in field_map:
                         continue
+                    cur_val = field_map[copy_field]
+                    new_issue[copy_field] = _field_xlate(cur_val)
 
-                    for copy_field in action.get("copy-fields", []):
-                        if field_name != copy_field:
-                            continue
-                        cur_val = jobj._get_field(issue, field_name)
-                        new_issue[field_id] = _field_xlate(cur_val)
-
-                    for default_field, default_value in action.get("default-fields", {}).items():
-                        if field_name != default_field:
-                            continue
-                        new_issue[field_id] = default_value
+                for default_field, default_value in action.get("default-fields", {}).items():
+                    if default_field in inv_fields:
+                        default_field = inv_fields[default_field]
+                    new_issue[default_field] = default_value
 
                 create_result = jobj.create_issue(new_issue)
                 jobj.set_state_for_issue(create_result.key, jobj._get_field(issue, "status"))
