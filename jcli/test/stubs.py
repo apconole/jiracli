@@ -230,7 +230,7 @@ class JiraConnectorStub(JiraConnector):
 
         return JiraConnectorStub._last_comment_reply
 
-    def fetch_boards(self, limit=25):
+    def fetch_boards(self, limit=25, name=None):
         """Return stub boards for testing"""
         boards = []
         board_names = ["Sprint Board", "Kanban Board", "Support Board",
