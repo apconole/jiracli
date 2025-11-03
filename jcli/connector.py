@@ -678,7 +678,10 @@ class JiraConnector(object):
 
     def get_field_rendered(self, issue, fieldname, substruct=None) -> str:
 
-        val = self.get_field(issue, fieldname, substruct)
+        try:
+            val = self.get_field(issue, fieldname, substruct)
+        except:
+            return ""
 
         # find the yaml for rendering the field
         issues_config = self._config_get_nested("jira.issues")
