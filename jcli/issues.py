@@ -418,9 +418,9 @@ def show_cmd(issuekey, raw, width, json):
             visibility = f"{v:<20} | "
             add_ln = f"| Author: {comment.author.displayName:<20} "
             if 'name' in comment.author.raw:
-                add_ln += "[~{comment.author.name:<20}] "
+                add_ln += f"[~{comment.author.name:<20}] "
             elif 'emailAddress' in comment.author.raw:
-                add_ln += f"[~{comment.author.emailAddress:<18}] "
+                add_ln += f"[~{comment.author.emailAddress:<20}] "
             add_ln += f"| {comment.id:<18} | {visibility}{comment.created:<20}"
             if len(add_ln) > max_width:
                 add_ln += "\n"
