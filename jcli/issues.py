@@ -274,7 +274,14 @@ def show_cmd(issuekey, raw, width, json):
 
     output = "+" + '-' * (max_width - 2) + "+\n"
     pname = jobj.get_field_rendered(issue, 'project', 'name')
-    aname = jobj.get_field_rendered(issue, 'assignee', 'name')
+    aname = jobj.get_field_rendered(issue, 'assignee', 'displayName')
+    a_internal_name = jobj.get_field_rendered(issue, 'assignee', 'name')
+    if a_internal_name and len(a_internal_name.strip()):
+        aname += f" [~{a_internal_name:<18}]"
+    else:
+        aeml = jobj.get_field_rendered(issue, 'assignee', 'emailAddress')
+        if aeml and len(aeml.strip()):
+            aname += f" [~{aeml:<18}] "
 
     output += f"| {issue.key:<10} | {pname:<20} | {aname:<39} |\n"
     output += "+" + '-' * (max_width - 2) + "+\n"
@@ -283,7 +290,14 @@ def show_cmd(issuekey, raw, width, json):
 
     summ = jobj.get_field_rendered(issue, 'summary')
 
-    reporter = jobj.get_field_rendered(issue, 'reporter', 'name')
+    reporter = jobj.get_field_rendered(issue, 'reporter', 'displayName')
+    rname = jobj.get_field_rendered(issue, 'reporter', 'name')
+    if rname and len(rname.strip()):
+        reporter += f" [~{rname:<18}]"
+    else:
+        reml = jobj.get_field_rendered(issue, 'reporter', 'emailAddress')
+        if reml and len(reml.strip()):
+            reporter += f" [~{reml:<18}] "
 
     output += f"| priority: {prio:<20} | status: {status:<34} |\n"
     output += "+" + '-' * (max_width - 2) + "+\n"
@@ -389,7 +403,12 @@ def show_cmd(issuekey, raw, width, json):
     comments_block = f"+ Comments: {' ' * (max_width - 14)} |\n"
     for comment in issue.fields.comment.comments:
         if max_width < 80:
-            comments_block += f"| Author: {comment.author.displayName:<14} [~{comment.author.name:<18}] | {comment.created:<20} |\n"
+            comments_block += f"| Author: {comment.author.displayName:<14} "
+            if 'name' in comment.author.raw:
+                comments_block += f"[~{comment.author.name:<18}] "
+            elif 'emailAddress' in comment.author.raw:
+                comments_block += f"[~{comment.author.emailAddress:<18}] "
+            comments_block += f"| {comment.created:<20} |\n"
         else:
             v = "all"
             try:
@@ -397,7 +416,12 @@ def show_cmd(issuekey, raw, width, json):
             except:
                 pass
             visibility = f"{v:<20} | "
-            add_ln = f"| Author: {comment.author.displayName:<20} [~{comment.author.name:<20}] | {comment.id:<18} | {visibility}{comment.created:<20}"
+            add_ln = f"| Author: {comment.author.displayName:<20} "
+            if 'name' in comment.author.raw:
+                add_ln += "[~{comment.author.name:<20}] "
+            elif 'emailAddress' in comment.author.raw:
+                add_ln += f"[~{comment.author.emailAddress:<18}] "
+            add_ln += f"| {comment.id:<18} | {visibility}{comment.created:<20}"
             if len(add_ln) > max_width:
                 add_ln += "\n"
             else:
