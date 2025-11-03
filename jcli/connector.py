@@ -326,8 +326,8 @@ class JiraConnector(object):
                 f"/rest/eausm/latest/planningPoker/{issue.id}"
 
             self._ratelimit()
-            r = self.jira._session.get(EAUSM_url)
             try:
+                r = self.jira._session.get(EAUSM_url)
                 EAUSM_json = json_loads(r)
                 issue.raw['fields']['eausm'] = EAUSM_json
             except:
