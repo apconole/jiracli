@@ -288,7 +288,12 @@ class JiraConnector(object):
         except JIRAError as e:
             result = {'key': f"ERROR retrieving information {e}", "name": f"Error: {e}"}
 
-        return result['name']
+        if 'name' in result:
+            return result['name']
+        elif 'emailAddress' in result:
+            return result['emailAddress']
+        else:
+            return result['displayName']
 
     def _query_issues(self, query='', startAt=0, maxResults=100) -> list:
         if self.jira is None:
