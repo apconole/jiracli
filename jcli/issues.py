@@ -54,6 +54,29 @@ ISSUE_DETAILS_MAP = {
 }
 
 
+def get_issue_key(ctx, issuekey):
+    """
+    Helper function to get the issue key from either the argument or shell context.
+
+    Args:
+        ctx: Click context object
+        issuekey: Issue key argument (may be None)
+
+    Returns:
+        The issue key to use, or None if no issue is available
+    """
+    if issuekey:
+        return issuekey
+
+    # Try to get from shell context
+    if ctx and ctx.obj and 'shell_context' in ctx.obj:
+        selected = ctx.obj['shell_context'].selected_issue
+        if selected:
+            return selected
+
+    return None
+
+
 @click.command(
     name='list'
 )
@@ -214,14 +237,15 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
 @click.command(
     name='show'
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.option("--raw", is_flag=True, default=False,
               help="Dump the issue details in 'raw' form.")
 @click.option("--width", type=int, default=0,
               help="Use a set width for display.  Default of '0' will set the display based on the terminal width.")
 @click.option("--json", is_flag=True, default=False,
               help="Dump the issue details in json compatible form.")
-def show_cmd(issuekey, raw, width, json):
+@click.pass_context
+def show_cmd(ctx, issuekey, raw, width, json):
     """Displays a JIRA issue, or dumps the raw issue details.
 
     The 'show' command will auto-discover the terminal width when displaying,
@@ -235,7 +259,15 @@ def show_cmd(issuekey, raw, width, json):
     will create a json list, with the first element being the json
     representation of the JIRA issue, followed by a json map between fields
     and customfield names.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
     """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -464,19 +496,28 @@ IN_REPLY_TO = IntegerOrStr(['last'])
 @click.command(
     name="add-comment"
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.option("--comment", type=str, default=None,
               help="The comment text to add.  Defaults to opening an editor.")
 @click.option("--visibility", type=str, default='all',
               help="Sets the group / role for visibility.  Defaults to 'all'.")
 @click.option("--in-reply-to", type=IN_REPLY_TO, default=None,
               help="Includes a quoted reply from an existing comment.")
-def add_comment_cmd(issuekey, comment, visibility, in_reply_to):
+@click.pass_context
+def add_comment_cmd(ctx, issuekey, comment, visibility, in_reply_to):
     """Adds a new comment to a JIRA issue.
 
     To reply to the most recent comment, simply pass the word 'last' as the
     IN_REPLY_TO argument.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
     """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -511,10 +552,20 @@ def add_comment_cmd(issuekey, comment, visibility, in_reply_to):
 @click.command(
     name="del-comment"
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.argument('comment_id')
-def del_comment_cmd(issuekey, comment_id):
-    """Deletes a comment from an issue."""
+@click.pass_context
+def del_comment_cmd(ctx, issuekey, comment_id):
+    """Deletes a comment from an issue.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+    """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -532,18 +583,27 @@ def del_comment_cmd(issuekey, comment_id):
 
 
 @click.command('update-comment')
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.argument('comment_id')
 @click.option("--body", type=str, default=None,
               help="Set new body to the argument.")
 @click.option('--visibility', type=str, default=None,
               help="Sets the group / role for visibility.  Use 'all' for no restriction.")
-def update_comment_cmd(issuekey, comment_id, body, visibility):
+@click.pass_context
+def update_comment_cmd(ctx, issuekey, comment_id, body, visibility):
     """Adjust a comment by modifying the body or visibility.
 
     If the BODY parameter is passed, it will become the new body.  Otherwise,
     an interactive EDITOR will spawn to allow adjusting the body if desired.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
     """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -584,9 +644,19 @@ def update_comment_cmd(issuekey, comment_id, body, visibility):
 @click.command(
     name="states"
 )
-@click.argument('issuekey')
-def states_cmd(issuekey):
-    """List the available state transitions for an issue."""
+@click.argument('issuekey', required=False)
+@click.pass_context
+def states_cmd(ctx, issuekey):
+    """List the available state transitions for an issue.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+    """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -598,14 +668,23 @@ def states_cmd(issuekey):
 @click.command(
     name="set-status"
 )
-@click.argument("issuekey")
+@click.argument("issuekey", required=False)
 @click.argument("status")
-def set_state_cmd(issuekey, status):
+@click.pass_context
+def set_state_cmd(ctx, issuekey, status):
     """Set an issue's current state.
 
     States are per-project in JIRA.  You can use the 'states' command to
     discover what the available transitions for a given issue are.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
     """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -616,10 +695,20 @@ def set_state_cmd(issuekey, status):
 @click.command(
     name="add-watcher"
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.argument('watcher')
-def add_watcher_cmd(issuekey, watcher):
-    """Adds a JIRA account as a watcher for an issue."""
+@click.pass_context
+def add_watcher_cmd(ctx, issuekey, watcher):
+    """Adds a JIRA account as a watcher for an issue.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+    """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -630,10 +719,20 @@ def add_watcher_cmd(issuekey, watcher):
 @click.command(
     name="del-watcher"
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.argument('watcher')
-def del_watcher_cmd(issuekey, watcher):
-    """Removes a watcher from an issue."""
+@click.pass_context
+def del_watcher_cmd(ctx, issuekey, watcher):
+    """Removes a watcher from an issue.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+    """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -644,15 +743,24 @@ def del_watcher_cmd(issuekey, watcher):
 @click.command(
     name="get-field"
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.argument('fieldname')
 @click.option("--allowed", is_flag=True, default=False,
               help="Also displays the allowed values.")
-def get_field_cmd(issuekey, fieldname, allowed):
+@click.pass_context
+def get_field_cmd(ctx, issuekey, fieldname, allowed):
     """Get a field value from a JIRA issue.
 
     NOTE: In JIRA, field names are case sensitive, so double check that
-          you are specifying the correct field name."""
+          you are specifying the correct field name.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+    """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
 
     jobj = connector.JiraConnector()
     jobj.login()
@@ -671,12 +779,13 @@ def get_field_cmd(issuekey, fieldname, allowed):
 @click.command(
     name="set-field"
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.argument('fieldname')
 @click.argument('fieldvalue')
 @click.option("--forced", is_flag=True, default=False,
               help="Force the value to be run through python eval and used as-is.")
-def set_field_cmd(issuekey, fieldname, fieldvalue, forced):
+@click.pass_context
+def set_field_cmd(ctx, issuekey, fieldname, fieldvalue, forced):
     """Sets a field in an issue to a specific value.
 
     JIRA field types are not always properly communicated in the field type
@@ -685,7 +794,16 @@ def set_field_cmd(issuekey, fieldname, fieldvalue, forced):
 
     NOTE: In JIRA, field names are case sensitive, so double check that
           you are specifying the correct field name.  If the field is not
-          correct, you may see blank output."""
+          correct, you may see blank output.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+    """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -993,13 +1111,23 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
 @click.command(
     name='attachments'
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.option("--pull", default=None,
               help="The attachment ID to download")
 @click.option("--push", default=None,
               help="file to upload as attachment")
-def attachments_cmd(issuekey, pull, push):
-    """List, Pull, or Push attachments to a JIRA issue."""
+@click.pass_context
+def attachments_cmd(ctx, issuekey, pull, push):
+    """List, Pull, or Push attachments to a JIRA issue.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+    """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
     issue = jobj.get_issue(issuekey)
@@ -1043,10 +1171,20 @@ def attachments_cmd(issuekey, pull, push):
 @click.command(
     name='eausm-vote'
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.argument('vote')
-def eausm_vote_cmd(issuekey, vote):
-    """Set a vote for an issue using the Easy Agile planning poker plugin."""
+@click.pass_context
+def eausm_vote_cmd(ctx, issuekey, vote):
+    """Set a vote for an issue using the Easy Agile planning poker plugin.
+
+    If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+    """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
     issue = jobj.get_issue(issuekey)
@@ -1072,7 +1210,7 @@ def get_link_type_choices():
 @click.command(
     name="add-link"
 )
-@click.argument('issuekey')
+@click.argument('issuekey', required=False)
 @click.argument('url')
 @click.argument('title')
 @click.option("--relationship-type",
@@ -1084,12 +1222,22 @@ def get_link_type_choices():
               type=RuntimeEvalChoice(get_link_type_choices,
                                      case_sensitive=False),
               help="Set a relationship.")
-def add_link_cmd(issuekey, url, title, relationship_type, link_type):
+@click.pass_context
+def add_link_cmd(ctx, issuekey, url, title, relationship_type, link_type):
     """Adds a new link to URL to the issue at ISSUEKEY.
 
        TITLE will be used as a title if the URL is a remote url.  It will be
        treated as a comma if the remote link is another issue.  If it is set
-       to the value 'none', it will be defaulted."""
+       to the value 'none', it will be defaulted.
+
+       If no ISSUEKEY is provided, uses the currently selected issue from the shell context.
+       """
+    issuekey = get_issue_key(ctx, issuekey)
+    if not issuekey:
+        click.echo("Error: No issue specified and no issue selected in shell context.")
+        click.echo("Use 'issues select <issuekey>' to select an issue first.")
+        return
+
     jobj = connector.JiraConnector()
     jobj.login()
 
@@ -1120,3 +1268,50 @@ def add_link_cmd(issuekey, url, title, relationship_type, link_type):
 
     # if we got here, this is a new link
     jobj.add_issue_link(issuekey, url, title, link_type)
+
+
+@click.command(
+    name="select"
+)
+@click.argument('issuekey')
+@click.pass_context
+def select_cmd(ctx, issuekey):
+    """Select an issue as the current context for the shell session.
+
+    Once an issue is selected, commands that normally require an ISSUEKEY
+    argument can be called without it, and will operate on the selected issue.
+    """
+    # Verify the issue exists
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    issue = jobj.get_issue(issuekey)
+    if issue is None:
+        click.echo(f"Error: Issue {issuekey} not found.")
+        return
+
+    # Update the shell context
+    ctx.ensure_object(dict)
+    if 'shell_context' in ctx.obj:
+        ctx.obj['shell_context'].selected_issue = issue.key
+        click.echo(f"Selected issue: {issue.key}")
+    else:
+        click.echo(f"Note: Issue {issue.key} exists, but shell context not available (not in shell mode).")
+
+
+@click.command(
+    name="deselect"
+)
+@click.pass_context
+def deselect_cmd(ctx):
+    """Clear the currently selected issue from the shell context."""
+    ctx.ensure_object(dict)
+    if 'shell_context' in ctx.obj:
+        if ctx.obj['shell_context'].selected_issue:
+            old_issue = ctx.obj['shell_context'].selected_issue
+            ctx.obj['shell_context'].selected_issue = None
+            click.echo(f"Deselected issue: {old_issue}")
+        else:
+            click.echo("No issue currently selected.")
+    else:
+        click.echo("Shell context not available (not in shell mode).")

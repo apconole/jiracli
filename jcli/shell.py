@@ -125,20 +125,68 @@ users.add_command(users_cmds.users_find_cmd)
 
 utils.add_command(utils_cmds.convert_cmd)
 
+# Shell context to maintain state across commands
+class ShellContext:
+    """Maintains state for the interactive shell session."""
+    def __init__(self):
+        self.selected_issue = None
+
+    def get_prompt(self):
+        """Generate the shell prompt based on current state."""
+        if self.selected_issue:
+            return f"jcli [{self.selected_issue}]> "
+        return "jcli> "
+
+
 # Add a shell-cmd option when click-shell is installed
 try:
     from click_shell import shell
 
-    @shell(prompt="jcli> ", intro="Starting...")
-    def shell_cmd():
-        pass
+    # Create a global shell context
+    _shell_context = ShellContext()
+
+    def get_shell_prompt():
+        """Dynamic prompt generator for click-shell."""
+        return _shell_context.get_prompt()
+
+    @shell(prompt=get_shell_prompt, intro="Starting...")
+    @click.pass_context
+    def shell_cmd(ctx):
+        # Store the shell context in Click's context object
+        ctx.ensure_object(dict)
+        ctx.obj['shell_context'] = _shell_context
 
     shell_cmd.add_command(my_cmds.login_cmd)
     shell_cmd.add_command(my_cmds.myself_cmd)
+
+    # Add command groups
     shell_cmd.add_command(issues)
     shell_cmd.add_command(details)
     shell_cmd.add_command(boards)
     shell_cmd.add_command(users)
+    shell_cmd.add_command(config)
+    shell_cmd.add_command(utils)
+
+    # Add top-level aliases for issue commands in shell mode
+    # These work seamlessly when an issue is selected, or accept an explicit issuekey
+    shell_cmd.add_command(issues_cmds.select_cmd)
+    shell_cmd.add_command(issues_cmds.deselect_cmd)
+    shell_cmd.add_command(issues_cmds.show_cmd)
+    shell_cmd.add_command(issues_cmds.add_comment_cmd)
+    shell_cmd.add_command(issues_cmds.states_cmd)
+    shell_cmd.add_command(issues_cmds.set_state_cmd, name='set-status')
+    shell_cmd.add_command(issues_cmds.set_field_cmd)
+    shell_cmd.add_command(issues_cmds.get_field_cmd)
+    shell_cmd.add_command(issues_cmds.add_watcher_cmd)
+    shell_cmd.add_command(issues_cmds.del_watcher_cmd)
+    shell_cmd.add_command(issues_cmds.attachments_cmd)
+    shell_cmd.add_command(issues_cmds.del_comment_cmd)
+    shell_cmd.add_command(issues_cmds.update_comment_cmd)
+    shell_cmd.add_command(issues_cmds.eausm_vote_cmd)
+    shell_cmd.add_command(issues_cmds.add_link_cmd)
+    shell_cmd.add_command(issues_cmds.list_cmd)
+    shell_cmd.add_command(issues_cmds.create_issue_cmd, name='create')
+
     cli.add_command(shell_cmd)
 except:
     pass
