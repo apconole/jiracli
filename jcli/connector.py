@@ -92,6 +92,13 @@ class JiraConnector(object):
 
         if not load_safe and 'jira' not in config:
             raise ValueError("Missing jira section in config yaml")
+        if 'server' not in config['jira'] and os.getenv("JIRA_SERVER"):
+            config['jira']['server'] = os.getenv("JIRA_SERVER")
+        if 'auth' not in config and os.getenv("JIRA_PAT"):
+            config['auth'] = {"pat": "True",
+                              "type": "api",
+                              "key": os.getenv("JIRA_PAT")}
+
         if not load_safe and 'server' not in config['jira']:
             raise ValueError("Missing server for jira config yaml")
 
