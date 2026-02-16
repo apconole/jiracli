@@ -34,7 +34,8 @@ try:
                 cookies = []
             for cookie in cookies:
                 if cookie.name in ['DWRSESSIONID', 'JSESSIONID',
-                                   'JiraSDSamlssoLoginV2']:
+                                   'JiraSDSamlssoLoginV2',
+                                   'atlassian.account.xsrf.token']:
                     return cookies
         if not spawned:
             try:
