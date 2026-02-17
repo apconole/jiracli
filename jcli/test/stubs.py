@@ -75,12 +75,16 @@ class JiraConnectorStub(JiraConnector):
             JiraConnectorStub.config['jira']['default'] = {}
             JiraConnectorStub.config['jira']['default']['markdown'] = True
 
-    def __init__(self, config_file=None):
+    def __init__(self, config_file=None, load_safe=False):
         self._last_jql = ""
         self.jira = jira_url_holder()
         self.config = JiraConnectorStub.config
+        self.config_file = config_file or '/dev/null'
         self._last_comment_reply = None
         self._fields = []
+
+    def _save_cfg(self):
+        pass
 
     def setup_add_random_issue():
         JiraConnectorStub.reset_config()
