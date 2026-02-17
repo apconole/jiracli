@@ -145,9 +145,27 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
                                                fields_dict=qd)
 
     issues = jobj._query_issues(issues_query, issue_offset, max_issues)
-    ISSUE_HEADER = []
+    final = format_issue_output(jobj, issues, output, len_, sort, template_file)
+    click.echo(final)
 
+
+def format_issue_output(jobj, issues, output, len_, sort=None, template_file=None):
+    """Format a list of issues for display.
+
+    Args:
+        jobj: JiraConnector instance (logged in)
+        issues: list of JIRA issue objects
+        output: output format string (table, simple, csv, json, report, template)
+        len_: summary trim length (0 for no trim)
+        sort: sort string (unused here, kept for interface consistency)
+        template_file: path to jinja2 template file
+
+    Returns:
+        str: formatted output
+    """
+    ISSUE_HEADER = []
     final = ""
+
     if len(issues) != 0 and output in ("table", "simple", "csv"):
         issue_list = []
         summary_pos = None
@@ -208,7 +226,7 @@ def list_cmd(assignee, project, jql, closed, len_, output, matching_eq,
     elif output == 'template':
         final = template_output(template_file, issues, jobj)
 
-    click.echo(final)
+    return final
 
 
 @click.command(

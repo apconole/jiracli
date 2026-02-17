@@ -10,6 +10,7 @@ from jcli import config as config_cmds
 from jcli import details as details_cmds
 from jcli import issues as issues_cmds
 from jcli import myself as my_cmds
+from jcli import query as query_cmds
 from jcli import users as users_cmds
 from jcli import utils as utils_cmds
 
@@ -74,6 +75,14 @@ def users():
 
 
 @cli.group()
+def query():
+    """
+    Saved query commands.
+    """
+    pass
+
+
+@cli.group()
 def utils():
     """
     Generic related utilities.
@@ -124,6 +133,11 @@ boards.add_command(boards_cmds.autoexec_cmd)
 
 users.add_command(users_cmds.users_find_cmd)
 
+query.add_command(query_cmds.list_all_cmd)
+query.add_command(query_cmds.run_cmd)
+query.add_command(query_cmds.build_cmd)
+query.add_command(query_cmds.remove_cmd)
+
 utils.add_command(utils_cmds.convert_cmd)
 
 # Add a shell-cmd option when click-shell is installed
@@ -140,6 +154,7 @@ try:
     shell_cmd.add_command(details)
     shell_cmd.add_command(boards)
     shell_cmd.add_command(users)
+    shell_cmd.add_command(query)
     cli.add_command(shell_cmd)
 except:
     pass

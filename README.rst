@@ -327,6 +327,40 @@ That can be controlled by a yaml setting::
 
 Case sensitivity is defaulted to 'true'.
 
+Saved Queries
+-------------
+
+The `query` command provides the ability to store JQL as a named query that
+can then be executed at will.  The subcommands allow for building, listing,
+running, and removing queries from the `~/.jira.yml` configuration file.
+
+Adding a query can be done with the *build* command::
+
+  $ jcli query build --name "OpenStuff" --description "Just stuff" \
+    --jql 'project="PROJMAIN" and (status = "New")'
+
+To list all the saved queries::
+
+  $ jcli query list-all
+  +-------------+----------------+------------------------------------------+
+  | Name        | Description    | JQL                                      |
+  |-------------+----------------+------------------------------------------|
+  | OpenStuff   | Just stuff     | project="PROJMAIN" and (status = "New")  |
+  +-------------+----------------+------------------------------------------+
+
+Running the query::
+
+  $ jcli query run OpenStuff
+  +---------+------------+------------+--------------------+--------+----------+
+  | key     | project    | priority   | summary            | status | assignee |
+  +---------+------------+------------+--------------------+--------+----------+
+  | BUG-123 | PROJMAIN   | Normal     | A normal bug       | New    | a@b.com  |
+  +---------+------------+------------+--------------------+--------+----------+
+
+Finally, you can remove the saved "OpenStuff" query with::
+
+  $ jcli query remove OpenStuff
+
 Bulk Formatting
 ---------------
 
