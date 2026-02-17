@@ -600,7 +600,10 @@ def states_cmd(issuekey):
 )
 @click.argument("issuekey")
 @click.argument("status")
-def set_state_cmd(issuekey, status):
+@click.option("--resolution", type=str, default=None,
+              help="Set the resolution when transitioning "
+              "(e.g. 'Done', 'Won\\'t Fix').")
+def set_state_cmd(issuekey, status, resolution):
     """Set an issue's current state.
 
     States are per-project in JIRA.  You can use the 'states' command to
@@ -609,7 +612,7 @@ def set_state_cmd(issuekey, status):
     jobj = connector.JiraConnector()
     jobj.login()
 
-    jobj.set_state_for_issue(issuekey, status)
+    jobj.set_state_for_issue(issuekey, status, resolution=resolution)
     click.echo("done.")
 
 
