@@ -350,7 +350,7 @@ class JiraConnector(object):
         state_names = [t['to']['name'] for t in transitions]
         return state_names
 
-    def set_state_for_issue(self, issue, status):
+    def set_state_for_issue(self, issue, status, resolution=None):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
@@ -358,7 +358,12 @@ class JiraConnector(object):
             issue = self.get_issue(issue)
 
         self._ratelimit()
-        self.jira.transition_issue(issue, transition=status)
+        if resolution is not None:
+            self.jira.transition_issue(issue, transition=status,
+                                       fields={'resolution':
+                                               {'name': resolution}})
+        else:
+            self.jira.transition_issue(issue, transition=status)
 
     def issue_url(self, issue_identifier) -> str:
         if self.jira is None:
@@ -978,6 +983,17 @@ class JiraConnector(object):
 
         self._cached_statuses = self.jira.statuses()
         return self._cached_statuses
+
+    def _get_resolutions(self):
+
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if hasattr(self, '_cached_resolutions'):
+            return self._cached_resolutions
+
+        self._cached_resolutions = self.jira.resolutions()
+        return self._cached_resolutions
 
     def get_status_detail(self, statusId):
         if self.jira is None:

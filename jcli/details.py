@@ -93,6 +93,26 @@ def dump_project_versions_cmd(project):
                                for x in jobj.jira.project_versions(project)]))
 
 
+@click.command(
+    name='resolutions'
+)
+@click.option("--json", is_flag=True, default=False,
+              help="Output details in json rather than as python format.")
+def resolutions_cmd(json):
+    """Print the various 'resolutions' known to the server.
+
+    NOTE: Not all resolutions are valid for all issues / projects.
+    """
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    if not json:
+        click.echo([(x.name, x.id) for x in jobj._get_resolutions()])
+    else:
+        click.echo(JSON.dumps([{"name": x.name, "id": x.id} for x in
+                               jobj._get_resolutions()]))
+
+
 @click.command("field-types")
 @click.option("--json", is_flag=True, default=False,
               help="Output details in json rather than as python format.")
