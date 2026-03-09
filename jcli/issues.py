@@ -7,6 +7,7 @@ import pprint
 import re
 import shutil
 import sys
+import yaml
 
 from click.core import ParameterSource
 from jcli import connector
@@ -1141,3 +1142,394 @@ def add_link_cmd(issuekey, url, title, relationship_type, link_type):
 
     # if we got here, this is a new link
     jobj.add_issue_link(issuekey, url, title, link_type)
+
+
+# ---------------------------------------------------------------------------
+# bulk-import helpers
+# ---------------------------------------------------------------------------
+
+def _bulk_parse_file(path):
+    """Load a YAML or JSON bulk-import file and return the raw dict."""
+    with open(path, 'r') as f:
+        if path.endswith('.json'):
+            return JSON.load(f)
+        return yaml.safe_load(f)
+
+
+def _bulk_topo_sort(issues, issue_ref_fields=None):
+    """Return issues in an order where every dependency appears before its
+    dependent.  Raises click.UsageError on cycles.
+
+    Each entry in *issues* is a dict that may contain a 'links' list.  Each
+    link entry may have a 'target' that is a local alias.  Fields named in
+    *issue_ref_fields* whose values are local aliases are also treated as
+    ordering dependencies.  Real Jira keys are already created and impose no
+    ordering constraint.
+    """
+    issue_ref_fields = issue_ref_fields or set()
+    local_ids = {issue['id'] for issue in issues if 'id' in issue}
+
+    # Build adjacency: node -> set of local-alias deps that must come first
+    deps = {issue.get('id', f'__idx_{i}'): set() for i, issue in enumerate(issues)}
+    idx_map = {issue.get('id', f'__idx_{i}'): issue for i, issue in enumerate(issues)}
+
+    for issue in issues:
+        node = issue.get('id', f'__idx_{issues.index(issue)}')
+        for link in issue.get('links', []):
+            target = link.get('target', '')
+            if target in local_ids:
+                deps[node].add(target)
+        for fname, fval in issue.get('fields', {}).items():
+            if fname in issue_ref_fields and str(fval) in local_ids:
+                deps[node].add(str(fval))
+
+    # Kahn's algorithm
+    result = []
+    in_degree = {n: 0 for n in deps}
+    rev = {n: [] for n in deps}
+    for n, d_set in deps.items():
+        for d in d_set:
+            rev[d].append(n)
+            in_degree[n] += 1
+
+    queue = [n for n, deg in in_degree.items() if deg == 0]
+    while queue:
+        n = queue.pop(0)
+        result.append(idx_map[n])
+        for m in rev[n]:
+            in_degree[m] -= 1
+            if in_degree[m] == 0:
+                queue.append(m)
+
+    if len(result) != len(issues):
+        raise click.UsageError(
+            "Cycle detected in bulk-import issue dependencies.")
+    return result
+
+
+def _bulk_validate(issues, jobj, default_project, default_issue_type,
+                   ref_fields=None):
+    """Query the Jira server to validate an import plan without creating anything.
+
+    Returns a list of human-readable error strings.  An empty list means the
+    plan looks valid.  Errors are accumulated (non-fail-fast) so the caller
+    sees everything that needs fixing in one pass.
+    """
+    ref_fields = ref_fields or set()
+    errors = []
+
+    # Cache link types from the server once
+    try:
+        jobj._ratelimit()
+        valid_link_types = {lt.name for lt in jobj.jira.issue_link_types()}
+    except Exception as exc:
+        errors.append(f"Could not fetch link types from server: {exc}")
+        valid_link_types = set()
+
+    # Local aliases defined in this batch — these don't need server validation
+    local_ids = {issue['id'] for issue in issues if 'id' in issue}
+
+    for i, entry in enumerate(issues):
+        label = entry.get('id') or f"issue[{i}]"
+        project = entry.get('project', default_project)
+        itype = entry.get('issue_type', default_issue_type)
+
+        # Validate project + issue type via createmeta
+        try:
+            jobj.get_project_default_types(project, itype)
+        except Exception as exc:
+            errors.append(f"{label}: project/issue-type invalid — {exc}")
+
+        # Validate link types and any existing-key targets
+        for link in entry.get('links', []):
+            ltype = link.get('link_type')
+            target = link.get('target', '')
+            if ltype and valid_link_types and ltype not in valid_link_types:
+                errors.append(
+                    f"{label}: unknown link type '{ltype}'. "
+                    f"Valid types: {', '.join(sorted(valid_link_types))}")
+            if target and target not in local_ids:
+                # Looks like a real Jira key — confirm it exists
+                try:
+                    if jobj.get_issue(target) is None:
+                        errors.append(
+                            f"{label}: link target '{target}' not found on server.")
+                except Exception as exc:
+                    errors.append(
+                        f"{label}: link target '{target}' could not be fetched — {exc}")
+
+        # Validate existing-key values in issue_ref_fields
+        for fname, fval in entry.get('fields', {}).items():
+            if fname not in ref_fields:
+                continue
+            fval = str(fval)
+            if fval in local_ids:
+                continue  # will be created as part of this batch
+            # Otherwise it should already exist on the server
+            try:
+                if jobj.get_issue(fval) is None:
+                    errors.append(
+                        f"{label}: field '{fname}' references '{fval}' "
+                        f"which was not found on server.")
+            except Exception as exc:
+                errors.append(
+                    f"{label}: field '{fname}' references '{fval}' "
+                    f"which could not be fetched — {exc}")
+
+    return errors
+
+
+def _bulk_build_issue_dict(entry, jobj, default_project, default_issue_type,
+                           alias_map=None, issue_ref_fields=None):
+    """Convert a bulk-import entry dict into a jira issue field dict.
+
+    Fields named in *issue_ref_fields* have their values looked up in
+    *alias_map* first, so a local alias is transparently replaced with the
+    real Jira key before being passed to convert_to_field_type.
+    """
+    alias_map = alias_map or {}
+    issue_ref_fields = issue_ref_fields or set()
+
+    issue = {}
+    issue['summary'] = entry.get('summary', '')
+    issue['description'] = entry.get('description', '')
+    issue['project'] = entry.get('project', default_project)
+    issue['issuetype'] = entry.get('issue_type', default_issue_type)
+
+    for fname, fval in entry.get('fields', {}).items():
+        resolved_fname = jobj._try_fieldname(fname)
+        fval = str(fval)
+        if fname in issue_ref_fields:
+            # Resolve any local alias to its real key before conversion.
+            # convert_to_field_type handles the wire format: issuelinks-type
+            # fields get {"key": value}, string/any fields get the plain key.
+            fval = alias_map.get(fval, fval)
+        issue[resolved_fname] = jobj.convert_to_field_type(resolved_fname, fval)
+
+    return issue
+
+
+@click.command(name='bulk-import')
+@click.pass_context
+@click.argument('importfile', type=click.Path(exists=True))
+@click.option('--project', type=str, default=None,
+              help="Default project for issues that don't specify one.")
+@click.option('--issue-type',
+              type=click.Choice(["Epic", "Bug", "Story", "Task", "Subtask"],
+                                case_sensitive=False),
+              default='Bug',
+              help="Default issue type when not specified per-issue. Defaults to 'Bug'.")
+@click.option('--issue-ref-field', 'issue_ref_fields', multiple=True, type=str,
+              help="Field name whose value is a Jira issue key or local alias. "
+                   "May be specified multiple times.  Merged with the "
+                   "'issue_ref_fields' list in the import file.")
+@click.option('--dry-run', is_flag=True, default=False,
+              help="Parse and display what would be created without touching Jira.")
+@click.option('--validate', is_flag=True, default=False,
+              help="Query the server to validate projects, issue types, link "
+                   "types, and referenced issue keys — but create nothing.  "
+                   "A live run also validates first and aborts on any error.")
+@click.option('--verbose', is_flag=True, default=False,
+              help="Print each issue dict before creating it.")
+def bulk_import_cmd(ctx, importfile, project, issue_type, issue_ref_fields,
+                    dry_run, validate, verbose):
+    """Bulk-create JIRA issues from a YAML or JSON file.
+
+    \b
+    The import file describes a list of issues.  Each issue may reference
+    other issues by a local 'id' alias or by an existing Jira issue key.
+    Issues are created in dependency order so that a newly-created issue can
+    be the target of a link in the same batch.
+
+    \b
+    Example YAML layout
+    -------------------
+    issue_ref_fields:             # field names whose values are issue keys/aliases
+      - parent
+      - customfield_12345
+    issues:
+      - id: auth-epic
+        summary: "Auth epic"
+        description: "Top-level epic for auth work."
+        project: MYPROJ
+        issue_type: Epic
+
+      - id: auth-spike
+        summary: "Spike: auth service design"
+        description: "Investigate OAuth2 options."
+        project: MYPROJ
+        issue_type: Story
+        fields:
+          Story Points: 3       # Jira display name (spaces OK in YAML keys)
+          Fix Version/s: "2.1"
+          parent: auth-epic     # alias resolved to real key before submission
+
+      - id: auth-impl
+        summary: "Implement auth service"
+        project: MYPROJ
+        issue_type: Story
+        fields:
+          Story Points: 8
+          parent: auth-epic     # real Jira keys also accepted here
+          ^customfield_10020: my-sprint   # ^ bypasses display-name lookup
+        links:
+          - link_type: "Depends"   # Jira link-type name (e.g. Depends, Blocks)
+            direction: outward     # outward (default) or inward
+            target: auth-spike     # local alias OR real Jira key (e.g. MYPROJ-42)
+          - link_type: "Relates"
+            direction: outward
+            target: MYPROJ-99      # reference to a pre-existing issue
+
+    \b
+    Field name resolution
+    ---------------------
+    Keys under 'fields' are resolved via the same mechanism as --set-field:
+
+    \b
+      * The key is matched against Jira custom field display names
+        (e.g. "Story Points" resolves to customfield_10016).
+        The match is case-sensitive and must be exact.
+      * If no display-name match is found the key is passed through
+        as-is, so standard built-in fields (priority, assignee, …)
+        work without any special syntax.
+      * Prefix the key with ^ to skip name resolution entirely and
+        supply the raw Jira field ID directly (e.g. ^customfield_10020).
+
+    \b
+    Issue-reference fields
+    ----------------------
+    Fields like 'parent' hold an issue key rather than a plain value.
+    Declare them in the top-level 'issue_ref_fields' list in the import
+    file, or with --issue-ref-field on the command line (both sources are
+    merged).  When a declared field's value matches a local alias the alias
+    is substituted with the real key before the issue is submitted to Jira.
+    The topological sort also respects these references, so the referenced
+    issue is always created first.
+
+    \b
+    Validation
+    ----------
+    --validate queries the server before creating anything:
+
+    \b
+      * Project exists and the chosen issue type is valid for it.
+      * Every link_type named in a 'links' entry exists on the server.
+      * Every non-alias target in 'links' and issue-reference fields
+        resolves to a real issue on the server.
+
+    \b
+    A normal (non-dry-run) run always performs the same validation first
+    and will abort before creating any issues if errors are found.
+    Use --dry-run to skip all server contact entirely.
+
+    \b
+    Dependency ordering
+    -------------------
+    Local aliases referenced in 'links' entries and in issue-reference
+    fields are resolved after the target issue has been created.  The
+    importer performs a topological sort so that dependencies are created
+    first.  A cycle in local-alias dependencies is an error.
+    """
+    if 'jobj' not in ctx.obj:
+        jobj = connector.JiraConnector()
+        jobj.login()
+        ctx.obj['jobj'] = jobj
+    else:
+        jobj = ctx.obj['jobj']
+
+    default_project = project or jobj.get_default_str('project',
+                                                      'Default Project')
+    default_issue_type = issue_type
+
+    data = _bulk_parse_file(importfile)
+    raw_issues = data.get('issues', [])
+    if not raw_issues:
+        click.echo("No issues found in import file.")
+        return
+
+    # 'parent' is always an issue-reference field in Jira Enterprise.
+    # Merge with any additions from the file and the CLI option.
+    ref_fields = {'parent'}
+    ref_fields.update(data.get('issue_ref_fields', []))
+    ref_fields.update(issue_ref_fields)
+
+    try:
+        ordered = _bulk_topo_sort(raw_issues, issue_ref_fields=ref_fields)
+    except click.UsageError as exc:
+        click.echo(f"ERROR: {exc}")
+        sys.exit(1)
+
+    # Server-side validation: runs for --validate and for live runs.
+    # Skipped only for --dry-run (no server contact at all).
+    if not dry_run:
+        click.echo("Validating against server...")
+        errors = _bulk_validate(ordered, jobj, default_project, default_issue_type,
+                                ref_fields=ref_fields)
+        if errors:
+            click.echo(f"Validation found {len(errors)} error(s):")
+            for err in errors:
+                click.echo(f"  ERROR: {err}")
+            sys.exit(1)
+        click.echo("Validation passed.")
+        if validate:
+            return
+
+    # alias -> real Jira key, populated as issues are created
+    alias_map = {}
+    dry_ct = 0
+
+    pending_links = []  # (real_key, link_entry) to process after all creates
+
+    for entry in ordered:
+        alias = entry.get('id')
+        dry_ct += 1
+        issue_dict = _bulk_build_issue_dict(entry, jobj, default_project,
+                                            default_issue_type,
+                                            alias_map=alias_map,
+                                            issue_ref_fields=ref_fields)
+
+        if dry_run or verbose:
+            click.echo(f"Issue{' [DRY-RUN]' if dry_run else ''}: {pprint.pformat(issue_dict)}")
+            if entry.get('links'):
+                click.echo(f"  Links: {entry['links']}")
+
+        if dry_run:
+            real_key = f"DRY-{dry_ct}"
+        else:
+            result = jobj.create_issue(issue_dict)
+            real_key = str(result)
+
+        click.echo(f"  Created: {real_key}" + (f" (alias: {alias})" if alias
+                                               else ""))
+
+        if alias:
+            alias_map[alias] = real_key
+
+        for link_entry in entry.get('links', []):
+            pending_links.append((real_key, link_entry))
+
+    # Now resolve and create all links
+    click.echo(f"\nProcessing {len(pending_links)} link(s)...")
+    for src_key, link_entry in pending_links:
+        raw_target = link_entry.get('target', '')
+        resolved_target = alias_map.get(raw_target, raw_target)
+        ltype = link_entry.get('link_type')
+        direction = link_entry.get('direction', 'outward')
+        isinward = direction.lower() == 'inward'
+
+        if not ltype:
+            click.echo(f"  WARNING: link from {src_key} to {resolved_target} has no "
+                       f"link_type – skipping.")
+            continue
+
+        if dry_run:
+            click.echo(f"  [DRY-RUN] link {src_key} --[{ltype}/{direction}]--> {resolved_target}")
+            continue
+
+        try:
+            jobj.add_issue_link(src_key, resolved_target, None, ltype, isinward)
+            click.echo(f"  Linked {src_key} --[{ltype}/{direction}]--> {resolved_target}")
+        except Exception as exc:
+            click.echo(f"  ERROR linking {src_key} -> {resolved_target}: {exc}")
+
+    click.echo("Bulk import complete.")

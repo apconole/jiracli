@@ -61,11 +61,52 @@ class JiraAuthorStub(dict):
         self['raw'] = {}
 
 
+class JiraLinkTypeStub:
+    def __init__(self, name):
+        self.name = name
+
+
+class JiraJiraStub:
+    """Minimal stand-in for the inner self.jira object used by _bulk_validate."""
+    server_url = 'https://issue.test.com/'
+    _link_types = [JiraLinkTypeStub('Depends'), JiraLinkTypeStub('Blocks'),
+                   JiraLinkTypeStub('Relates')]
+    _valid_projects = {'PROJ', 'MYPROJ'}
+    _valid_issue_types = {'Bug', 'Story', 'Epic', 'Task', 'Subtask'}
+
+    def issue_link_types(self):
+        return self._link_types
+
+    def projects(self):
+        class _Proj:
+            def __init__(self, key):
+                self.key = key
+                self.name = key
+        return [_Proj(k) for k in self._valid_projects]
+
+    def issue_type_by_name(self, name):
+        if name not in self._valid_issue_types:
+            import jira
+            raise jira.exceptions.JIRAError(f"Unknown issue type: {name}")
+
+        class _IType:
+            def __init__(self, n):
+                self.id = n
+                self.name = n
+        return _IType(name)
+
+    def project_issue_fields(self, project, issue_type_id):
+        return []
+
+
 class JiraConnectorStub(JiraConnector):
     _issues_list = []
+    _created_issues = []
+    _issue_links = []
     _last_jql = ""
     last_issue = None
     config = {}
+    _field_type_mapping = {}
 
     def reset_config(cfg=None):
         if cfg:
@@ -77,7 +118,7 @@ class JiraConnectorStub(JiraConnector):
 
     def __init__(self, config_file=None, load_safe=False):
         self._last_jql = ""
-        self.jira = jira_url_holder()
+        self.jira = JiraJiraStub()
         self.config = JiraConnectorStub.config
         self.config_file = config_file or '/dev/null'
         self._last_comment_reply = None
@@ -150,7 +191,14 @@ class JiraConnectorStub(JiraConnector):
         JiraConnectorStub._issues_list.append(issue)
 
     def setup_clear_issues():
+        JiraConnectorStub.reset_config()
         JiraConnectorStub._issues_list = []
+        JiraConnectorStub._created_issues = []
+        JiraConnectorStub._issue_links = []
+        JiraConnectorStub._field_type_mapping = {}
+
+    def _ratelimit(self):
+        pass
 
     def login(self):
         pass
@@ -190,6 +238,11 @@ class JiraConnectorStub(JiraConnector):
     def set_field(self, issue, fieldname, val):
         pass
 
+    def convert_to_field_type(self, field_id, field_value):
+        if field_id in JiraConnectorStub._field_type_mapping:
+            return JiraConnector.convert_to_field_type(self, field_id, field_value)
+        return field_value
+
     def create_issue(self, issue_dict):
         print("Including an issue.")
         if 'summary' not in issue_dict or \
@@ -198,7 +251,34 @@ class JiraConnectorStub(JiraConnector):
            'project' not in issue_dict:
             raise ValueError("Missing required elements")
         JiraConnectorStub.last_issue = issue_dict
-        return 'ISSUE-abc'
+        JiraConnectorStub._created_issues.append(issue_dict)
+        key = f'ISSUE-{len(JiraConnectorStub._created_issues)}'
+        # Register the new issue so get_issue() can find it
+        stub = JiraIssueStub()
+        f = JiraFieldStub()
+        f['summary'] = issue_dict['summary']
+        f['project'] = {'name': issue_dict['project']}
+        f['status'] = {'name': 'New'}
+        f['priority'] = {'name': 'Normal'}
+        f['assignee'] = JiraAuthorStub()
+        f['assignee']['displayName'] = ''
+        f['assignee']['name'] = ''
+        f['Component'] = 'component'
+        stub.raw['fields'] = f
+        stub['key'] = key
+        stub['summary'] = issue_dict['summary']
+        stub['statusId'] = 0
+        JiraConnectorStub._issues_list.append(stub)
+        return key
+
+    def add_issue_link(self, issue, target, title=None, link_type=None, isinward=False):
+        JiraConnectorStub._issue_links.append({
+            'source': issue,
+            'target': target,
+            'title': title,
+            'link_type': link_type,
+            'isinward': isinward,
+        })
 
     def add_comment(self, issue_identifier, comment_body, visibility):
         for issue in JiraConnectorStub._issues_list:

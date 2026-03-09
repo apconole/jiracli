@@ -907,6 +907,8 @@ class JiraConnector(object):
 
         if field_type == "string":
             return field_value
+        elif field_type == "any":
+            return field_value
         elif field_type == "option":
             return {"value": field_value}
         elif field_type == "dict":
@@ -926,6 +928,9 @@ class JiraConnector(object):
         elif field_type == "array":
             parser = field_value.replace(' ', '').replace('\t', '').replace('\r', '')
             return [self.object_convert(parser)]
+        elif field_type == "issuelinks":
+            return {"key": field_value}
+
         # Add more conversions for other field types as needed
 
     def convert_to_field_type(self, field_id, field_value):
