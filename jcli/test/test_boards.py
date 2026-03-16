@@ -311,7 +311,11 @@ def test_is_issue_assigned_to_helper(cli_runner):
         issue = issues[0]
         # Test with email
         if issue.fields.assignee:
-            assert is_issue_assigned_to(issue, issue.fields.assignee['name'])
+            if hasattr(issue.fields.assignee, 'name'):
+                assert is_issue_assigned_to(issue, issue.fields.assignee['name'])
+            if hasattr(issue.fields.assignee, 'accountId'):
+                print("Got a Key with accountId for some crazy shit")
+                assert is_issue_assigned_to(issue, issue.fields.assignee['accountId'])
             # Test with display name
             assert is_issue_assigned_to(issue, issue.fields.assignee['displayName'])
             # Test case insensitivity

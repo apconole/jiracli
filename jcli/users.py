@@ -27,7 +27,11 @@ def users_find_cmd(by, json, user):
     else:
         users = []
         for user in userlist:
-            userD = {"name": user.displayName, "username": user.name,
-                     "id": user.key}
+            if jobj._is_cloud():
+                userD = {"name": user.displayName, "username": user.accountId,
+                         "id": user.accountId}
+            else:
+                userD = {"name": user.displayName, "username": user.name,
+                         "id": user.key}
             users.append(userD)
         click.echo(f"{JSON.dumps(users)}")

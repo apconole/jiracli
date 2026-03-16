@@ -24,14 +24,21 @@ BOARD_DETAILS_MAP = {
     "priority": "raw['fields']['priority']['name']",
     "summary": "raw['fields']['summary']",
     "status": "raw['fields']['status']['name']",
-    "assignee": "raw['fields']['assignee']['name']",
+    "assignee": "raw['fields']['assignee']['displayName']",
 }
 
 
 def is_issue_assigned_to(issue, assignee):
-    return issue.fields.assignee and \
-        (issue.fields.assignee.name.lower() == assignee.lower() or
-         issue.fields.assignee.displayName.lower() == assignee.lower())
+    if not issue.fields.assignee:
+        return False
+    assignee_lower = assignee.lower()
+    if hasattr(issue.fields.assignee, 'accountId') and issue.fields.assignee.accountId:
+        if issue.fields.assignee.accountId.lower() == assignee_lower:
+            return True
+    if hasattr(issue.fields.assignee, 'name') and issue.fields.assignee.name:
+        if issue.fields.assignee.name.lower() == assignee_lower:
+            return True
+    return issue.fields.assignee.displayName.lower() == assignee_lower
 
 
 def is_issue_in_column(issue, column_statuses, jobj):
@@ -342,7 +349,7 @@ def autoexec_cmd(boardname, source_sprint, destination_sprint, run):
         if isinstance(val, jira.resources.CustomFieldOption):
             val = val.raw
         elif isinstance(val, jira.resources.User):
-            return {"accountId", val.key}
+            return jobj._user_to_field(val)
 
         if isinstance(val, str):
             return val
@@ -368,7 +375,7 @@ def autoexec_cmd(boardname, source_sprint, destination_sprint, run):
                 new_issue["summary"] = jobj._get_field(issue, "summary")
                 new_issue["description"] = jobj._get_field(issue, "description")
                 new_issue["issuetype"] = {"name": jobj._get_field(issue, "issuetype")}
-                new_issue["assignee"] = {"name": issue.fields.assignee.name}
+                new_issue["assignee"] = jobj._user_to_field(issue.fields.assignee)
                 new_issue[inv_fields["Sprint"]] = new_sprint.id
                 field_map = issue.fields.__dict__
                 for copy_field in action.get("copy-fields", []):

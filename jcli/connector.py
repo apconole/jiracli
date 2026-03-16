@@ -279,6 +279,18 @@ class JiraConnector(object):
         except Exception as e:
             raise ValueError(f"Invalid expr: {e}")
 
+    def _is_cloud(self):
+        """Returns True if connected to a Jira Cloud instance."""
+        if self.jira is None:
+            return False
+        return self.jira._is_cloud
+
+    def _user_to_field(self, user):
+        """Returns the appropriate user field dict for cloud or server."""
+        if self._is_cloud():
+            return {"accountId": user.accountId}
+        return {"name": user.name}
+
     def myself(self):
         if self.jira is None:
             raise RuntimeError("Need to log-in first")
@@ -289,6 +301,8 @@ class JiraConnector(object):
         except JIRAError as e:
             result = {'key': f"ERROR retrieving information {e}", "name": f"Error: {e}"}
 
+        if self._is_cloud() and 'accountId' in result:
+            return result['accountId']
         if 'name' in result:
             return result['name']
         elif 'emailAddress' in result:
@@ -414,7 +428,8 @@ class JiraConnector(object):
         replyto = replyto.replace("{{date}}", f"{comment.updated}")
         replyto = replyto.replace("{{author_name}}",
                                   f"{comment.author.displayName}")
-        replyto = replyto.replace("{{author_id}}", f"{comment.author.name}")
+        author_id = comment.author.accountId if self._is_cloud() else comment.author.name
+        replyto = replyto.replace("{{author_id}}", f"{author_id}")
         replyto = replyto.replace("{{comment_id}}", f"{comment.id}")
 
         if not replyto.endswith("\n"):
@@ -772,6 +787,8 @@ class JiraConnector(object):
             raise RuntimeError("Need to log-in first.")
 
         self._ratelimit()
+        if self._is_cloud():
+            return self.jira.search_users(query=name)
         return self.jira.search_users(user=name)
 
     def convert_to_jira_type(self, var_instance, value):
@@ -791,7 +808,7 @@ class JiraConnector(object):
             names = self.find_users_for_name(value)
             if len(names) > 1:
                 raise ValueError(f"Ambiguous name {value} with {len(names)} matches.")
-            return {"name": names[0].name}
+            return self._user_to_field(names[0])
 
         if isinstance(var_instance, jira.resources.Priority):
             return {"name": value}
@@ -856,7 +873,14 @@ class JiraConnector(object):
                 val = self.convert_to_jira_type(f, val)
             elif not forced:
                 if fieldname == "assignee":
-                    val = {"name": val}
+                    names = self.find_users_for_name(val)
+                    if len(names) != 1:
+                        raise ValueError(f"Ambiguous name: {val}.  {len(names)} results.")
+                    if self._is_cloud():
+                        val = {"accountId": names[0].accountId}
+                    else:
+                        val = {"name": names[0].name}
+
             else:
                 val = eval(val)
             issue_dict = {fieldname: val}
@@ -918,7 +942,7 @@ class JiraConnector(object):
             n = self.find_users_for_name(field_value)
             if len(n) != 1:
                 raise ValueError(f"Unable to convert \"{field_value}\" to unambiguous name - {len(n)} results.")
-            return {'name': n[0].name}
+            return self._user_to_field(n[0])
         elif field_type == "number":
             return float(field_value)
         elif field_type == "date":
