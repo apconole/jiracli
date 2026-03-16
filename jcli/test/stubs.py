@@ -17,10 +17,15 @@ def gen_rand_date(max_drift=30):
 
 class JiraFieldStub(dict):
     def __getattr__(self, attr):
-        return self[attr]
+        if attr in self:
+            return self[attr]
+        raise AttributeError(f"Bad attribute: {attr}")
 
     def __setattr__(self, attr, val):
-        self[attr] = val
+        if attr in self:
+            self[attr] = val
+        else:
+            raise AttributeError(f"Bad attribute: {attr}")
 
     def __init__(self):
         self['raw'] = {}
@@ -52,10 +57,15 @@ class JiraCommentStub(dict):
 
 class JiraAuthorStub(dict):
     def __getattr__(self, attr):
-        return self[attr]
+        if attr in self:
+            return self[attr]
+        raise AttributeError(f"Bad attribute: {attr}")
 
     def __setattr__(self, attr, val):
-        self[attr] = val
+        if attr in self:
+            self[attr] = val
+        else:
+            raise AttributeError(f"Bad attribute: {attr}")
 
     def __init__(self):
         self['raw'] = {}
