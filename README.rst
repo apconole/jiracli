@@ -736,6 +736,53 @@ to get a valid issue created.  It is recommended to save a copy of the text
 and use the `--dry-run` option to make sure you are confident in the issue
 text, and only then run without `--dry-run`.
 
+Mass Importing Issues
+---------------------
+
+To add bulk issues to JIRA, you can use the `issues bulk-import` command
+pointed at a properly structure YAML file.  These can include inward/outward
+dependencies.  Example::
+
+  issues:
+  - id: auth-spike          # optional local alias for use as a link target
+    summary: "Spike: auth service design"
+    description: "Investigate OAuth2 options."
+    project: MYPROJ
+    issue_type: Story       # Epic | Bug | Story | Task | Subtask
+    fields:                 # arbitrary Jira field overrides
+      story_points: 3
+
+  - id: auth-impl
+    summary: "Implement auth service"
+    project: MYPROJ
+    issue_type: Story
+    links:
+      - link_type: "Depends"   # Jira link-type name (e.g. Depends, Blocks, Relates)
+        direction: outward     # outward (default) or inward
+        target: auth-spike     # local alias OR real Jira key (e.g. MYPROJ-42)
+      - link_type: "Relates"
+        direction: outward
+        target: MYPROJ-99      # reference to a pre-existing issue
+
+  $ jcli issues bulk-import auth-story.yaml
+
+This should create two issues: *auth-spike* and *auth-impl*, and add
+relationships between auth-impl, auth-spike, and MYPROJ-99.
+
+The import schema is as follows::
+  issues:
+  - id: local-alias       # optional; used to reference this issue as target
+    summary: "..."
+    description: "..."
+    project: PROJ
+      issue_type: TYPE
+      fields:             # arbitrary field name overrides
+        story_points: 3
+      links:
+        - link_type: "Depends"   # Jira link-type name
+          direction: outward     # outward (default) or inward
+          target: local-alias    # local alias OR existing Jira key
+
 
 Interfacing with boards
 -----------------------
