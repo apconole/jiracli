@@ -1394,6 +1394,8 @@ class JiraConnector(object):
             raise RuntimeError("Need to log-in first.")
 
         self._ratelimit()
+        if self._is_cloud():
+            return self.jira.search_users(query=searchTerm)
         return self.jira.search_users(user=searchTerm)
 
     def _find_users(self, term):
