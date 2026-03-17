@@ -51,7 +51,7 @@ ISSUE_DETAILS_MAP = {
     "priority": "raw['fields']['priority']['name']",
     "summary": "raw['fields']['summary']",
     "status": "raw['fields']['status']['name']",
-    "assignee": "raw['fields']['assignee']['name']",
+    "assignee": "raw['fields']['assignee']['displayName']",
 }
 
 
