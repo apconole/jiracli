@@ -1,5 +1,9 @@
+import base64
 import datetime
 import getpass
+import hashlib
+import random
+import string
 from jcli import utils
 from jira import JIRA
 from jira.exceptions import JIRAError
@@ -15,6 +19,40 @@ import time
 import types
 import urllib
 import yaml
+
+# Easy Agile Planning Poker - Forge extension identifiers (fixed for this app)
+EAUSM_FORGE_EXTENSION_ID = (
+    ""
+)
+EAUSM_FORGE_ENVIRONMENT_ID = ""
+EAUSM_FORGE_MODULE_KEY = "planning-poker-forge-panel"
+EAUSM_FORGE_APP_VERSION = "3.120.0"
+EAUSM_FORGE_ENVIRONMENT_TYPE = "PRODUCTION"
+
+EAUSM_FORGE_INVOKE_MUTATION = """mutation forge_ui_invokeExtension($input: InvokeExtensionInput!) {
+  invokeExtension(input: $input) {
+    success
+    response {
+      body
+      __typename
+    }
+    contextToken {
+      jwt
+      expiresAt
+      __typename
+    }
+    errors {
+      message
+      extensions {
+        errorType
+        statusCode
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}"""
 
 
 try:
@@ -336,19 +374,30 @@ class JiraConnector(object):
         # Add support for the EZ Agile Planning Poker extension
         if issue is not None and 'eausm' not in self.config['jira'] or \
            bool(self.config['jira']['eausm']):
-            # Check for the EZ Agile Planning Poker ext on the server
-            EAUSM_url = self.jira.server_url + \
-                f"/rest/eausm/latest/planningPoker/{issue.id}"
-
             self._ratelimit()
             try:
-                r = self.jira._session.get(EAUSM_url)
-                EAUSM_json = json_loads(r)
-                issue.raw['fields']['eausm'] = EAUSM_json
-            except:
-                # set the in-memory config to false for now.  Future
-                # requests won't trigger EAUSM code any more.
-                self.config['jira']['eausm'] = False
+                if self._is_cloud():
+                    # Cloud: planning poker is a Forge app, use GraphQL relay
+                    ctx_token, ctx_ids, cloud_id = \
+                        self._eausm_forge_context(issue)
+                    if ctx_token and ctx_ids:
+                        path = (f"/forge/rest/eausm/latest"
+                                f"/planningPoker/{issue.id}")
+                        eausm_data = self._eausm_forge_invoke(
+                            issue, ctx_token, ctx_ids, cloud_id,
+                            path, 'GET')
+                        if eausm_data is not None:
+                            issue.raw['fields']['eausm'] = eausm_data
+                else:
+                    # Server/DC: planning poker is a Connect add-on, direct REST
+                    EAUSM_url = (self.jira.server_url +
+                                 f"/rest/eausm/latest/planningPoker/{issue.id}")
+                    r = self.jira._session.get(EAUSM_url)
+                    EAUSM_json = json_loads(r)
+                    issue.raw['fields']['eausm'] = EAUSM_json
+            except Exception:
+                # Disable EAUSM for this session on any failure
+                self.config['jira']['eausm'] = {}
         return issue
 
     def get_states_for_issue(self, issue_identifier) -> list:
@@ -1333,6 +1382,13 @@ class JiraConnector(object):
         user.find(key)
         return [user]
 
+    def _find_users_by_account_id(self, account_id):
+        user = User(self.jira._options, self.jira._session,
+                    _query_param='accountId')
+        self._ratelimit()
+        user.find(account_id)
+        return [user]
+
     def _find_users_by_term(self, searchTerm):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
@@ -1341,6 +1397,16 @@ class JiraConnector(object):
         return self.jira.search_users(user=searchTerm)
 
     def _find_users(self, term):
+        # On cloud, userIds from EAUSM are accountIds (format "digits:uuid").
+        # search_users and key-based lookup don't resolve those; use accountId
+        # lookup directly.
+        if self._is_cloud() and ':' in str(term):
+            try:
+                users = self._find_users_by_account_id(term)
+                if users and hasattr(users[0], 'displayName'):
+                    return users
+            except Exception:
+                pass
         users = self._find_users_by_term(term)
         users = users if len(users) else self._find_users_by_key(term)
         return users
@@ -1416,6 +1482,308 @@ class JiraConnector(object):
             self._ratelimit()
             self.jira.add_simple_link(issue, link)
 
+    def _get_cloud_id(self):
+        """Return the Atlassian tenant cloudId via the well-known tenant_info endpoint."""
+        try:
+            r = self.jira._session.get(
+                f"{self.jira.server_url}/_edge/tenant_info")
+            if r.status_code == 200:
+                return r.json().get('cloudId')
+        except Exception:
+            pass
+        return None
+
+    def _discover_eausm_extension_ids(self, issue_key, cloud_id):
+        """Query jira.forge.workItemPanels for the Planning Poker extension IDs.
+
+        Returns (extension_id, environment_id, module_key) or (None, None, None).
+        """
+        query = (
+            "query jiracli_discover_eausm($issueKey: String!, $cloudId: ID) {"
+            " jira { forge { workItemPanels("
+            "  cloudId: $cloudId, context: { workItemIdOrKey: $issueKey }"
+            " ) { moduleId } } } }"
+        )
+        try:
+            r = self.jira._session.post(
+                f"{self.jira.server_url}/gateway/api/graphql",
+                json={
+                    "operationName": "jiracli_discover_eausm",
+                    "query": query,
+                    "variables": {"issueKey": issue_key, "cloudId": cloud_id},
+                },
+                headers={"accept": "application/json",
+                         "content-type": "application/json"},
+            )
+            if r.status_code != 200:
+                return None, None, None
+            panels = (r.json().get('data', {})
+                              .get('jira', {})
+                              .get('forge', {})
+                              .get('workItemPanels', []))
+            for panel in panels:
+                module_id = panel.get('moduleId', '')
+                # ARI: ari:cloud:ecosystem::extension/{appId}/{envId}/static/{modKey}
+                if 'planning-poker' in module_id.lower():
+                    parts = module_id.split('/')
+                    if len(parts) >= 5:
+                        return module_id, parts[2], parts[4]
+        except Exception:
+            pass
+        return None, None, None
+
+    def _get_eausm_extension_ids(self, issue):
+        """Return (extension_id, environment_id, module_key) for Planning Poker.
+
+        Tries dynamic discovery via workItemPanels; falls back to constants.
+        Results are cached on the connector instance for the session lifetime.
+        """
+        if getattr(self, '_eausm_extension_id', None):
+            return (self._eausm_extension_id,
+                    self._eausm_environment_id,
+                    self._eausm_module_key)
+        cloud_id = self._get_cloud_id()
+        if cloud_id and issue:
+            ext_id, env_id, mod_key = self._discover_eausm_extension_ids(
+                issue.key, cloud_id)
+            if ext_id:
+                self._eausm_extension_id = ext_id
+                self._eausm_environment_id = env_id
+                self._eausm_module_key = mod_key
+                return ext_id, env_id, mod_key
+        return EAUSM_FORGE_EXTENSION_ID, EAUSM_FORGE_ENVIRONMENT_ID, EAUSM_FORGE_MODULE_KEY
+
+    def _eausm_forge_context(self, issue):
+        """Get a Forge context token and workspace ARI for planning poker.
+
+        Returns (token, context_ids, cloud_id) or (None, None, None) on failure.
+        """
+        extension_id, environment_id, module_key = self._get_eausm_extension_ids(issue)
+
+        local_id_suffix = hashlib.md5(issue.key.encode()).hexdigest()
+        timestamp = int(time.time() * 1000)
+        local_id = f"{extension_id}-{local_id_suffix}-{timestamp}"
+
+        issue_type = 'Task'
+        issue_type_id = '10000'
+        if hasattr(issue, 'fields') and hasattr(issue.fields, 'issuetype'):
+            issue_type = issue.fields.issuetype.name
+            issue_type_id = str(issue.fields.issuetype.id)
+
+        project_key = ''
+        project_id = ''
+        if hasattr(issue, 'fields') and hasattr(issue.fields, 'project'):
+            project_key = issue.fields.project.key
+            project_id = str(issue.fields.project.id)
+
+        extension_obj = {
+            "type": "jira:issuePanel",
+            "id": extension_id,
+            "environmentId": environment_id,
+            "environmentKey": "production",
+            "environmentType": EAUSM_FORGE_ENVIRONMENT_TYPE,
+            "appVersion": EAUSM_FORGE_APP_VERSION,
+            "moduleId": extension_id,
+        }
+
+        eausm_cfg = self.config['jira'].get('eausm', {})
+        if isinstance(eausm_cfg, dict) and 'installation_id' in eausm_cfg:
+            extension_obj['installationId'] = eausm_cfg['installation_id']
+
+        body = {
+            "extension": extension_obj,
+            "extensionData": {
+                "issue": {
+                    "key": issue.key,
+                    "id": str(issue.id),
+                    "type": issue_type,
+                    "typeId": issue_type_id,
+                },
+                "project": {
+                    "id": project_id,
+                    "key": project_key,
+                    "type": "software",
+                },
+                "isNewToIssue": False,
+                "type": "jira:issuePanel",
+                "jira": {"isNewNavigation": True},
+            },
+            "localId": local_id,
+            "useWorkspaceAri": True,
+        }
+
+        token_url = f"{self.jira.server_url}/rest/internal/2/forge/context/token"
+        try:
+            r = self.jira._session.post(token_url, json=body)
+            if r.status_code != 200:
+                return None, None, None
+
+            resp = r.json()
+            token = (
+                resp.get('token') or
+                (resp.get('contextToken', {}).get('jwt')
+                 if isinstance(resp.get('contextToken'), dict) else None) or
+                (resp.get('contextToken')
+                 if isinstance(resp.get('contextToken'), str) else None)
+            )
+            if not token:
+                return None, None, None
+
+            # Decode JWT payload (no signature verification needed here)
+            parts = token.split('.')
+            if len(parts) < 2:
+                return None, None, None
+            padded = parts[1] + '=' * (4 - len(parts[1]) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(padded))
+            context_ids = payload.get('contextIds', [])
+            cloud_id = payload.get('context', {}).get('cloudId', '')
+            return token, context_ids, cloud_id
+        except Exception:
+            return None, None, None
+
+    def _eausm_forge_invoke(self, issue, context_token, context_ids, cloud_id,
+                            path, method='GET', call_headers=None, body=None):
+        """Invoke the planning poker backend through the Forge GraphQL relay.
+
+        Returns the parsed JSON response body, or None on failure.
+        """
+        extension_id, environment_id, module_key = self._get_eausm_extension_ids(issue)
+
+        local_id_suffix = hashlib.md5(issue.key.encode()).hexdigest()
+        timestamp = int(time.time() * 1000)
+        local_id = f"{extension_id}-{local_id_suffix}-{timestamp}"
+
+        session_id = ''.join(
+            random.choices(string.ascii_letters + string.digits, k=20))
+
+        req_headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Session-Id": session_id,
+        }
+        if call_headers:
+            req_headers.update(call_headers)
+
+        call_payload = {"path": path, "method": method, "headers": req_headers}
+        if body is not None:
+            call_payload["body"] = json.dumps(body)
+
+        issue_type = 'Task'
+        issue_type_id = '10000'
+        if hasattr(issue, 'fields') and hasattr(issue.fields, 'issuetype'):
+            issue_type = issue.fields.issuetype.name
+            issue_type_id = str(issue.fields.issuetype.id)
+
+        project_key = ''
+        project_id = ''
+        if hasattr(issue, 'fields') and hasattr(issue.fields, 'project'):
+            project_key = issue.fields.project.key
+            project_id = str(issue.fields.project.id)
+
+        workspace_ari = context_ids[0] if context_ids else ''
+
+        variables = {
+            "input": {
+                "contextIds": context_ids,
+                "extensionId": extension_id,
+                "payload": {
+                    "call": {
+                        "functionKey": "requestConnectBackend",
+                        "payload": call_payload,
+                    },
+                    "context": {
+                        "cloudId": cloud_id,
+                        "localId": local_id,
+                        "environmentId": environment_id,
+                        "environmentType": EAUSM_FORGE_ENVIRONMENT_TYPE,
+                        "moduleKey": module_key,
+                        "siteUrl": self.jira.server_url,
+                        "appVersion": EAUSM_FORGE_APP_VERSION,
+                        "extension": {
+                            "issue": {
+                                "key": issue.key,
+                                "id": str(issue.id),
+                                "type": issue_type,
+                                "typeId": issue_type_id,
+                            },
+                            "project": {
+                                "id": project_id,
+                                "key": project_key,
+                                "type": "software",
+                            },
+                            "isNewToIssue": False,
+                            "type": "jira:issuePanel",
+                            "jira": {"isNewNavigation": True},
+                        },
+                    },
+                    "contextToken": context_token,
+                },
+                "entryPoint": "resolver",
+            }
+        }
+
+        gql_headers = {
+            "accept": "*/*",
+            "apollographql-client-name": "GATEWAY",
+            "atl-attribution": json.dumps({
+                "atlWorkspaceAri": workspace_ari,
+                "service": "forge-ui",
+            }),
+            "content-type": "application/json",
+        }
+
+        gql_body = {
+            "operationName": "forge_ui_invokeExtension",
+            "variables": variables,
+            "query": EAUSM_FORGE_INVOKE_MUTATION,
+        }
+
+        import logging
+        log = logging.getLogger(__name__)
+
+        try:
+            gql_url = f"{self.jira.server_url}/gateway/api/graphql"
+            r = self.jira._session.post(gql_url, json=gql_body,
+                                        headers=gql_headers)
+            log.debug("EAUSM forge invoke HTTP %s", r.status_code)
+            if r.status_code != 200:
+                log.debug("EAUSM forge invoke bad status: %s %s",
+                          r.status_code, r.text[:500])
+                return None
+
+            data = r.json()
+            log.debug("EAUSM forge invoke response: %s", json.dumps(data)[:1000])
+            invoke_result = data.get('data', {}).get('invokeExtension', {})
+            if not invoke_result.get('success'):
+                log.debug("EAUSM forge invoke not successful: errors=%s",
+                          invoke_result.get('errors'))
+                return None
+
+            resp_body = invoke_result.get('response', {}).get('body')
+            log.debug("EAUSM forge invoke resp_body: %s",
+                      str(resp_body)[:500] if resp_body else None)
+            if resp_body is None:
+                return None
+            # resp_body may be a JSON string or already a dict
+            if isinstance(resp_body, str):
+                try:
+                    resp_body = json.loads(resp_body)
+                except Exception:
+                    return resp_body
+            # The Connect backend wraps the real payload: {"status":200,"body":"<json>"}
+            if isinstance(resp_body, dict) and 'body' in resp_body:
+                inner = resp_body['body']
+                if isinstance(inner, str):
+                    try:
+                        return json.loads(inner)
+                    except Exception:
+                        return inner
+                return inner
+            return resp_body
+        except Exception as e:
+            log.debug("EAUSM forge invoke exception: %s", e, exc_info=True)
+            return None
+
     def eausm_vote_issue(self, issue, vote):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
@@ -1428,14 +1796,33 @@ class JiraConnector(object):
 
         vote = int(vote)
 
-        EAUSM_url = f"{self.jira.server_url}/rest/eausm/latest/planningPoker/vote"
         if 'eausm' not in self.config['jira'] or \
            bool(self.config['jira']['eausm']):
-            payload = {"issueId": issue.id, "vote": vote}
             self._ratelimit()
-            self.jira._session.put(EAUSM_url, data=json.dumps(payload))
+            if self._is_cloud():
+                # Cloud: route through Forge GraphQL relay
+                ctx_token, ctx_ids, cloud_id = \
+                    self._eausm_forge_context(issue)
+                if not ctx_token or not ctx_ids:
+                    raise RuntimeError(
+                        "Could not get Forge context token for planning poker")
+                path = "/forge/rest/eausm/latest/planningPoker/vote"
+                body = {"issueId": str(issue.id), "vote": vote}
+                result = self._eausm_forge_invoke(
+                    issue, ctx_token, ctx_ids, cloud_id,
+                    path, 'PUT', body=body)
+                if result is None:
+                    raise RuntimeError(
+                        "Planning poker vote via Forge failed")
+            else:
+                # Server/DC: direct REST API
+                EAUSM_url = (f"{self.jira.server_url}"
+                             f"/rest/eausm/latest/planningPoker/vote")
+                payload = {"issueId": issue.id, "vote": vote}
+                self.jira._session.put(EAUSM_url, data=json.dumps(payload))
         else:
-            raise RuntimeError("Voting by this client is disabled - check your jira yml.")
+            raise RuntimeError(
+                "Voting by this client is disabled - check your jira yml.")
 
     def jira_text_field_to_md(self, jira_text):
         if self.jira is None:
