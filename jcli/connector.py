@@ -1412,6 +1412,7 @@ class JiraConnector(object):
                 users = self._find_users_by_account_id(term)
                 if users and hasattr(users[0], 'displayName'):
                     return users
+                return []
             except Exception:
                 pass
         users = self._find_users_by_term(term)
@@ -1849,6 +1850,19 @@ class JiraConnector(object):
         jira_comment_pattern = re.compile(r'\[(.*?)\|(https?://.*?/browse/([A-Z]+-\d+)\?focusedId=(\d+).*?)\]')
         text = jira_comment_pattern.sub(r'[\1](\3#\4)', jira_text)
 
+        # Convert name references that are accountId
+        def name_replacement(match):
+            word = match.group(0)
+            word = word[2:]
+            if word.lower().startswith("accountid:"):
+                word = word[10:]
+            word = word[:-1]
+            users = self._find_users(word)
+            if len(users) > 1 or len(users) == 0:
+                return word
+            return f"@({users[0].displayName})"
+
+        text = re.sub(r'\[~[a-zA-Z0-9:@-]*\]', name_replacement, text)
         text = utils.jira_to_md(text)
         return text
 
@@ -1874,4 +1888,23 @@ class JiraConnector(object):
             md_text
         )
         text = utils.md_to_jira(text)
+
+        # Convert name references that are accountId
+        def name_replacement(match):
+            word = match.group(0)
+            result = word
+            word = word[2:]
+            word = word[:-1]
+            users = self._find_users(word)
+            if len(users) > 1:
+                raise ValueError(f"Ambiguous account: {result} has {users}.  Use a different specifier.")
+            elif len(users) == 0:
+                return result
+            if self._is_cloud():
+                result = users[0].accountId
+            else:
+                result = users[0].name
+            return f"[~{result}]"
+
+        text = re.sub(r'@\([a-zA-Z0-9 _]*\)', name_replacement, text)
         return text

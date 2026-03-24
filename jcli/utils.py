@@ -344,8 +344,11 @@ def convert_cmd(input, to):
     Markdown (in which case, the expected input file should contain JIRA
     formatted text).
     """
+    print(f"Starting {input}...")
     data = input.read()
+    print(f"Converting [{data}]")
     if to == "jira":
+        print("Convert to JIRA")
         click.echo(md_to_jira(data))
     elif to == "md":
         click.echo(jira_to_md(data))
