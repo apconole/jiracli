@@ -886,8 +886,11 @@ def issue_extract_blocks(issue_block):
               " issue type.  Must specify valid values for both on the command line.")
 @click.option("--dry-run", is_flag=True, default=False,
               help="Do not actually commit the issue.")
+@click.option("--json", is_flag=True, default=False,
+              help="Output the created issue in JSON format.")
 def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
-                     from_file, commit, oneline, verbose, show_fields, dry_run):
+                     from_file, commit, oneline, verbose, show_fields, dry_run,
+                     json):
     """Creates a new JIRA issue.
 
     Supports creating a JIRA issue from the command line, using a 'git' like
@@ -1009,7 +1012,10 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
     if dry_run or verbose:
         click.echo(f"Creating: {pprint.pformat(issue)}")
     result = "DRY-OKAY" if dry_run else jobj.create_issue(issue)
-    click.echo(f"done - Result: {result}.")
+    if json and not dry_run:
+        click.echo(JSON.dumps(result.raw))
+    else:
+        click.echo(f"done - Result: {result}.")
 
 
 @click.command(

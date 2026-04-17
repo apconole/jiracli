@@ -43,6 +43,9 @@ class JiraIssueStub(dict):
     def __init__(self):
         self['raw'] = {}
 
+    def __str__(self):
+        return self.get('key', '')
+
 
 class JiraCommentStub(dict):
     def __getattr__(self, attr):
@@ -254,7 +257,6 @@ class JiraConnectorStub(JiraConnector):
         return field_value
 
     def create_issue(self, issue_dict):
-        print("Including an issue.")
         if 'summary' not in issue_dict or \
            'description' not in issue_dict or \
            'issuetype' not in issue_dict or \
@@ -279,7 +281,7 @@ class JiraConnectorStub(JiraConnector):
         stub['summary'] = issue_dict['summary']
         stub['statusId'] = 0
         JiraConnectorStub._issues_list.append(stub)
-        return key
+        return stub
 
     def add_issue_link(self, issue, target, title=None, link_type=None, isinward=False):
         JiraConnectorStub._issue_links.append({
