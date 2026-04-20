@@ -257,8 +257,10 @@ def test_issue_create_json(cli_runner):
                                 '--issue-type', 'Bug'], obj={})
     assert result.exit_code == 0
     json_obj = json.loads(result.output)
-    assert 'fields' in json_obj
-    assert json_obj['fields']['summary'] == issue_summary
+    assert json_obj['success'] is True
+    assert json_obj['issue_id'] == 'ISSUE-1'
+    assert 'fields' in json_obj['raw']
+    assert json_obj['raw']['fields']['summary'] == issue_summary
 
 
 @patch('jcli.connector.JiraConnector', JiraConnectorStub)
