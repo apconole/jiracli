@@ -886,8 +886,11 @@ def issue_extract_blocks(issue_block):
               " issue type.  Must specify valid values for both on the command line.")
 @click.option("--dry-run", is_flag=True, default=False,
               help="Do not actually commit the issue.")
+@click.option("--json", is_flag=True, default=False,
+              help="Output the created issue in JSON format.")
 def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
-                     from_file, commit, oneline, verbose, show_fields, dry_run):
+                     from_file, commit, oneline, verbose, show_fields, dry_run,
+                     json):
     """Creates a new JIRA issue.
 
     Supports creating a JIRA issue from the command line, using a 'git' like
@@ -911,6 +914,10 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
     fields = {}
     set_field = set_field or []
 
+    if verbose and json:
+        click.echo("INVALID - cannot set both verbose and json flags.")
+        sys.exit(1)
+
     if commit:
         if len(commit) == 1 and not oneline:
             # treat this as a from-file with a specific commit.
@@ -921,8 +928,16 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
             for sha in commit:
                 commit_line = git_get_commit_oneline(sha)
                 if not commit_line or not len(commit_line):
-                    click.echo(f"ERROR: Unable to find {sha}")
-                    click.echo("Please make sure you are in a git tree, or GIT_DIR is defined.")
+                    if not json:
+                        click.echo(f"ERROR: Unable to find {sha}")
+                        click.echo(
+                            "Please make sure you are in a git tree, or "
+                            "GIT_DIR is defined.")
+                    else:
+                        click.echo(JSON.dumps({"success": False,
+                                               "issue_id": None,
+                                               "error":
+                                               f"Unable to find sha {sha}"}))
                     sys.exit(1)
                 commit_lines = commit_line.split("\n")
                 for commit_line in commit_lines:
@@ -981,7 +996,15 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
 
         if issue_patch == template_data and not (from_file or
                                                  (commit and not oneline)):
-            click.echo("Issue text not set.  Please fill in project, summary, and description.")
+            if not json:
+                click.echo("Issue text not set.  Please fill in project, "
+                           "summary, and description.")
+            else:
+                click.echo(JSON.dumps({"success": False,
+                                       "issue_id": None,
+                                       "error":
+                                       "Issue text not set.  Please fill in "
+                                       "project, summary, and description."}))
             sys.exit(1)
     else:
         issue_patch = template_data
@@ -1008,8 +1031,22 @@ def create_issue_cmd(ctx, summary, description, project, issue_type, set_field,
     issue["issuetype"] = issue_type
     if dry_run or verbose:
         click.echo(f"Creating: {pprint.pformat(issue)}")
-    result = "DRY-OKAY" if dry_run else jobj.create_issue(issue)
-    click.echo(f"done - Result: {result}.")
+
+    try:
+        result = "DRY-OKAY" if dry_run else jobj.create_issue(issue)
+        if json:
+            click.echo(JSON.dumps({"success": True,
+                                   "issue_id": result if dry_run else result.key,
+                                   "raw": None if dry_run else result.raw}))
+        else:
+            click.echo(f"done - Result: {result}.")
+    except Exception as e:
+        if json:
+            click.echo(JSON.dumps({"success": False,
+                                   "issue_id": None,
+                                   "error": str(e)}))
+        else:
+            click.echo(f"Unable to create issue - {str(e)}.")
 
 
 @click.command(

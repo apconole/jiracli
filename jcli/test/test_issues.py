@@ -242,6 +242,28 @@ DESC: {issue_description}
 
 
 @patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_issue_create_json(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+
+    issue_summary = "JSON output test"
+    issue_description = "Testing JSON output for create."
+    issue_project = "ABC"
+
+    result = cli_runner.invoke(create_issue_cmd,
+                               ['--json',
+                                '--summary', issue_summary,
+                                '--description', issue_description,
+                                '--project', issue_project,
+                                '--issue-type', 'Bug'], obj={})
+    assert result.exit_code == 0
+    json_obj = json.loads(result.output)
+    assert json_obj['success'] is True
+    assert json_obj['issue_id'] == 'ISSUE-1'
+    assert 'fields' in json_obj['raw']
+    assert json_obj['raw']['fields']['summary'] == issue_summary
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
 def test_issue_case_cmp(cli_runner):
     JiraConnectorStub.setup_clear_issues()
 
