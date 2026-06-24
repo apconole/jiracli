@@ -213,8 +213,13 @@ def sprints_cmd(boardname, name, show_all, my_issues, no_issues, json):
         for issue in issues:
             for column in columns:
                 if is_issue_in_column(issue, columns[column], jobj):
-                    if my_issues and \
-                       jobj.get_field(issue, 'assignee', 'name') != match_assignee:
+                    if my_issues and (
+                            (not jobj._is_cloud() and
+                             jobj.get_field(issue, 'assignee', 'name') !=
+                             match_assignee) or
+                            (jobj._is_cloud() and
+                             jobj.get_field(issue, 'assignee', 'accountId') !=
+                             match_assignee)):
                         continue
 
                     if not json:
