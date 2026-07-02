@@ -157,9 +157,11 @@ def get_config_cmd(boardname):
               help='Display only those issues in the sprint where assignee is me.')
 @click.option("--no-issues", type=bool, is_flag=True, default=False,
               help="Do not query or display issues.")
+@click.option("--filter", type=str, default=None,
+              help="Applies a quick filter to the results (defaults to None)")
 @click.option("--json", type=bool, is_flag=True, default=False,
               help="Print the details in JSON format.")
-def sprints_cmd(boardname, name, show_all, my_issues, no_issues, json):
+def sprints_cmd(boardname, name, show_all, my_issues, no_issues, filter, json):
     """
     Displays the sprints of a board, optionally specified by 'name'
     """
@@ -200,9 +202,12 @@ def sprints_cmd(boardname, name, show_all, my_issues, no_issues, json):
             current_sprint["start_date_str"] = start_date
             current_sprint["end_date_str"] = end_date
 
-        issues_query = f'sprint = {sprint.id}'
         if not no_issues:
-            issues = jobj._query_issues(issues_query, 0, 250)
+            if filter:
+                issues = jobj.fetch_sprint_issues_with_qf(boardname, sprint.id, filter, 0, 250)
+            else:
+                issues_query = f'sprint = {sprint.id}'
+                issues = jobj._query_issues(issues_query, 0, 250)
         else:
             issues = []
 
