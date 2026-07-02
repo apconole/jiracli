@@ -1327,13 +1327,24 @@ class JiraConnector(object):
 
         board = self._fetch_board_object(board)
 
-        # Boards are a total hack, and this is also sad.
-        # Rather than a direct link somewhere to quickfilters, we need to
-        # use the greenhopper endpoint to find the quickfilter config
+        # Use the official REST Agile API endpoint
         self._ratelimit()
-        cfg = self.jira.find(f"../../greenhopper/1.0/rapidviewconfig/editmodel.json?rapidViewId={board.raw['id']}")
-        if 'quickFilterConfig' in cfg.raw:
-            return cfg.quickFilterConfig
+        url = f"{self.jira._options['server']}/rest/agile/1.0/board/{board.id}/quickfilter"
+        response = self.jira._session.get(url)
+        response.raise_for_status()
+        filters_data = response.json()
+
+        if filters_data.get('values'):
+            # The REST API uses 'jql' but maintain compatibility with 'query' attribute
+            for f in filters_data['values']:
+                if 'jql' in f:
+                    f['query'] = f['jql']
+
+            class QuickFilterConfig:
+                def __init__(self, filters):
+                    self.quickFilters = [types.SimpleNamespace(**f) for f in filters]
+            return QuickFilterConfig(filters_data['values'])
+
         return None
 
     def fetch_issues_by_board_qf(self, board, issue_offset, max_issues, filter) -> list:
@@ -1362,6 +1373,32 @@ class JiraConnector(object):
             return resp.issuesData.issues
 
         return []
+
+    def fetch_sprint_issues_with_qf(self, board, sprint_id, filter_name, startAt=0, maxResults=250):
+        """Fetch sprint issues with a quick filter applied using JQL."""
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        board = self._fetch_board_object(board)
+
+        # Get the quick filter by name
+        filts = self.fetch_quickfilters_by_board(board)
+        if not filts:
+            raise ValueError("No quick filters found for board")
+
+        filter_jql = None
+        for f in filts.quickFilters:
+            if f.name == filter_name:
+                filter_jql = f.query
+                break
+
+        if not filter_jql:
+            raise ValueError(f"Unknown quick filter: {filter_name}")
+
+        # Combine sprint query with quick filter JQL
+        combined_query = f'sprint = {sprint_id} AND ({filter_jql})'
+
+        return self._query_issues(combined_query, startAt, maxResults)
 
     def create_issue(self, issue_dict):
         if self.jira is None:
