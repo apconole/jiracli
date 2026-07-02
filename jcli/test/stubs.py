@@ -82,6 +82,7 @@ class JiraLinkTypeStub:
 class JiraJiraStub:
     """Minimal stand-in for the inner self.jira object used by _bulk_validate."""
     server_url = 'https://issue.test.com/'
+    _is_cloud = False
     _link_types = [JiraLinkTypeStub('Depends'), JiraLinkTypeStub('Blocks'),
                    JiraLinkTypeStub('Relates')]
     _valid_projects = {'PROJ', 'MYPROJ'}
