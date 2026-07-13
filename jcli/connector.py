@@ -1413,7 +1413,40 @@ class JiraConnector(object):
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
 
-        result = self.jira.create_issue(issue_dict)
+        try:
+            result = self.jira.create_issue(issue_dict)
+        except JIRAError as e:
+            error_str = str(e)
+            if "cannot be set" not in error_str:
+                raise
+            # Some fields (e.g. sprint, story_points) are not on the Create
+            # screen but CAN be set via update after creation.  Parse which
+            # fields Jira rejected, remove them, retry, then update.
+            bad_fields = re.findall(r"Field '([^']+)' cannot be set", error_str)
+            if not bad_fields:
+                raise
+            deferred = {}
+            reduced = dict(issue_dict)
+            for fname in bad_fields:
+                if fname in reduced:
+                    deferred[fname] = reduced.pop(fname)
+            if not deferred:
+                raise
+            result = self.jira.create_issue(reduced)
+            casecmp = bool(self.get_default_str('case_sensitive', "true"))
+            custom_fields = self._fetch_custom_fields()
+            for fname, fval in deferred.items():
+                try:
+                    resolved = self._try_fieldname(fname)
+                    if resolved == fname and not casecmp:
+                        for k, display in custom_fields.items():
+                            if display.lower() == fname.lower():
+                                resolved = k
+                                break
+                    result.update(fields={resolved: fval})
+                except Exception:
+                    pass  # best-effort; field may truly be unavailable
+
         self.last_issue = result
         return result
 
