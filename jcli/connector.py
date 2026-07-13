@@ -896,6 +896,15 @@ class JiraConnector(object):
             except jira.exceptions.JIRAError:
                 raise ValueError(f"Couldn't determine issue type for \"{issue_type}\"")
         self._ratelimit()
+        if self._is_cloud():
+            meta = self.jira.createmeta(projectKeys=project,
+                                        issuetypeIds=[issue_type.id],
+                                        expand="projects.issuetypes.fields")
+            for proj in meta.get("projects", []):
+                for it in proj.get("issuetypes", []):
+                    if it["id"] == issue_type.id:
+                        return [f["name"] for f in it.get("fields", {}).values()]
+            return []
         full_fields = self.jira.project_issue_fields(project, issue_type.id)
         return [f.name for f in full_fields]
 
