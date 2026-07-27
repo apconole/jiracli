@@ -428,6 +428,17 @@ class JiraConnector(object):
         else:
             self.jira.transition_issue(issue, transition=status)
 
+    def set_issue_type(self, issue, new_type):
+        """Change the issue type for an issue."""
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+
+        self._ratelimit()
+        issue.update(fields={"issuetype": {"name": new_type}})
+
     def issue_url(self, issue_identifier) -> str:
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")

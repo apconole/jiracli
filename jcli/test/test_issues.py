@@ -3,6 +3,7 @@ from jcli.issues import list_cmd
 from jcli.issues import add_comment_cmd
 from jcli.issues import create_issue_cmd
 from jcli.issues import get_field_cmd
+from jcli.issues import set_type_cmd
 from jcli.issues import bulk_import_cmd
 from jcli.issues import _bulk_parse_file
 from jcli.issues import _bulk_topo_sort
@@ -883,3 +884,46 @@ def test_validate_accumulates_all_errors(cli_runner, bulk_yaml):
     assert result.exit_code == 1
     # Both errors should appear
     assert result.output.count('ERROR:') >= 2
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_set_type_cmd(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+    JiraConnectorStub.setup_add_random_issue()
+    issue = JiraConnectorStub._issues_list[0]
+
+    result = cli_runner.invoke(set_type_cmd, [issue['key'], 'Epic'], obj={})
+    assert result.exit_code == 0
+    assert 'Updated' in result.output
+    assert 'Bug -> Epic' in result.output
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_set_type_cmd_issue_not_found(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+
+    result = cli_runner.invoke(set_type_cmd, ['NONEXISTENT-1', 'Epic'], obj={})
+    assert result.exit_code == 1
+    assert 'not found' in result.output
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_set_type_cmd_invalid_type(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+    JiraConnectorStub.setup_add_random_issue()
+    issue = JiraConnectorStub._issues_list[0]
+
+    result = cli_runner.invoke(set_type_cmd, [issue['key'], 'InvalidType'],
+                               obj={})
+    assert result.exit_code != 0
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_set_type_cmd_case_insensitive(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+    JiraConnectorStub.setup_add_random_issue()
+    issue = JiraConnectorStub._issues_list[0]
+
+    result = cli_runner.invoke(set_type_cmd, [issue['key'], 'epic'], obj={})
+    assert result.exit_code == 0
+    assert '-> Epic' in result.output
