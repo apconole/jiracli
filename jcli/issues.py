@@ -636,6 +636,33 @@ def set_state_cmd(issuekey, status, resolution):
 
 
 @click.command(
+    name="set-type"
+)
+@click.argument("issuekey")
+@click.argument("new_type",
+                type=click.Choice(["Epic", "Bug", "Story", "Task", "Subtask"],
+                                  case_sensitive=False))
+def set_type_cmd(issuekey, new_type):
+    """Change the issue type for an existing issue.
+
+    NOTE: Changing issue type may have side effects such as losing
+    fields that don't apply to the target type."""
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    issue = jobj.get_issue(issuekey)
+    if issue is None:
+        click.echo(f"Error: {issuekey} not found.")
+        sys.exit(1)
+
+    old_type = jobj.get_field(issue, "issuetype")
+
+    jobj.set_issue_type(issue, new_type)
+
+    click.echo(f"Updated {issuekey}, type: {old_type} -> {new_type}")
+
+
+@click.command(
     name="add-watcher"
 )
 @click.argument('issuekey')

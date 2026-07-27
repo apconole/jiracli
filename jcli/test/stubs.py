@@ -197,6 +197,7 @@ class JiraConnectorStub(JiraConnector):
         f['status'] = {'name': status}
         f['assignee'] = assignee
         f['Component'] = "component"
+        f['issuetype'] = {"name": "Bug"}
         issue.raw['fields'] = f
         issue["key"] = issue_tag
         issue["summary"] = random_summary
@@ -232,6 +233,12 @@ class JiraConnectorStub(JiraConnector):
 
     def set_state_for_issue(self, issue, status):
         pass
+
+    def set_issue_type(self, issue, new_type):
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+        if issue is not None:
+            issue.raw['fields']['issuetype'] = {"name": new_type}
 
     def issue_url(self, issue_identifier):
         pass
