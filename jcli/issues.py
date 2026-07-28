@@ -663,6 +663,33 @@ def set_type_cmd(issuekey, new_type):
 
 
 @click.command(
+    name="set-parent"
+)
+@click.argument("issuekey")
+@click.argument("parent")
+def set_parent_cmd(issuekey, parent):
+    """Set or clear the parent of an existing issue.
+
+    Use 'None' as the PARENT value to clear the parent."""
+    jobj = connector.JiraConnector()
+    jobj.login()
+
+    issue = jobj.get_issue(issuekey)
+    if issue is None:
+        click.echo(f"Error: {issuekey} not found.")
+        sys.exit(1)
+
+    old_parent = jobj.get_field(issue, "parent")
+
+    if parent.lower() == "none":
+        jobj.set_parent(issue, None)
+        click.echo(f"Updated {issuekey}, parent: {old_parent} -> None")
+    else:
+        jobj.set_parent(issue, parent)
+        click.echo(f"Updated {issuekey}, parent: {old_parent} -> {parent}")
+
+
+@click.command(
     name="add-watcher"
 )
 @click.argument('issuekey')

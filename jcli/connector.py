@@ -439,6 +439,20 @@ class JiraConnector(object):
         self._ratelimit()
         issue.update(fields={"issuetype": {"name": new_type}})
 
+    def set_parent(self, issue, parent_key):
+        """Set or clear the parent of an issue."""
+        if self.jira is None:
+            raise RuntimeError("Need to log-in first.")
+
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+
+        self._ratelimit()
+        if parent_key is None:
+            issue.update(fields={"parent": None})
+        else:
+            issue.update(fields={"parent": {"key": parent_key}})
+
     def issue_url(self, issue_identifier) -> str:
         if self.jira is None:
             raise RuntimeError("Need to log-in first.")
