@@ -198,6 +198,7 @@ class JiraConnectorStub(JiraConnector):
         f['assignee'] = assignee
         f['Component'] = "component"
         f['issuetype'] = {"name": "Bug"}
+        f['parent'] = {"key": "PARENT-1"}
         issue.raw['fields'] = f
         issue["key"] = issue_tag
         issue["summary"] = random_summary
@@ -239,6 +240,15 @@ class JiraConnectorStub(JiraConnector):
             issue = self.get_issue(issue)
         if issue is not None:
             issue.raw['fields']['issuetype'] = {"name": new_type}
+
+    def set_parent(self, issue, parent_key):
+        if isinstance(issue, str):
+            issue = self.get_issue(issue)
+        if issue is not None:
+            if parent_key is None:
+                issue.raw['fields']['parent'] = None
+            else:
+                issue.raw['fields']['parent'] = {"key": parent_key}
 
     def issue_url(self, issue_identifier):
         pass

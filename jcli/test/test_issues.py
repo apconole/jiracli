@@ -4,6 +4,7 @@ from jcli.issues import add_comment_cmd
 from jcli.issues import create_issue_cmd
 from jcli.issues import get_field_cmd
 from jcli.issues import set_type_cmd
+from jcli.issues import set_parent_cmd
 from jcli.issues import bulk_import_cmd
 from jcli.issues import _bulk_parse_file
 from jcli.issues import _bulk_topo_sort
@@ -927,3 +928,39 @@ def test_set_type_cmd_case_insensitive(cli_runner):
     result = cli_runner.invoke(set_type_cmd, [issue['key'], 'epic'], obj={})
     assert result.exit_code == 0
     assert '-> Epic' in result.output
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_set_parent_cmd(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+    JiraConnectorStub.setup_add_random_issue()
+    issue = JiraConnectorStub._issues_list[0]
+
+    result = cli_runner.invoke(set_parent_cmd,
+                               [issue['key'], 'NEW-PARENT-1'], obj={})
+    assert result.exit_code == 0
+    assert 'Updated' in result.output
+    assert 'PARENT-1' in result.output
+    assert '-> NEW-PARENT-1' in result.output
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_set_parent_cmd_clear(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+    JiraConnectorStub.setup_add_random_issue()
+    issue = JiraConnectorStub._issues_list[0]
+
+    result = cli_runner.invoke(set_parent_cmd,
+                               [issue['key'], 'None'], obj={})
+    assert result.exit_code == 0
+    assert '-> None' in result.output
+
+
+@patch('jcli.connector.JiraConnector', JiraConnectorStub)
+def test_set_parent_cmd_issue_not_found(cli_runner):
+    JiraConnectorStub.setup_clear_issues()
+
+    result = cli_runner.invoke(set_parent_cmd,
+                               ['NONEXISTENT-1', 'PROJ-100'], obj={})
+    assert result.exit_code == 1
+    assert 'not found' in result.output
