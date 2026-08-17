@@ -58,29 +58,60 @@ EAUSM_FORGE_INVOKE_MUTATION = """mutation forge_ui_invokeExtension($input: Invok
 try:
     import browser_cookie3
 
+    _FIREFOX_EXTRA_PROFILE_DIRS = [
+        '~/.config/mozilla/firefox',
+        '~/.mozilla/firefox',
+        '~/snap/firefox/common/.mozilla/firefox',
+    ]
+
+    def _find_firefox_cookie_file():
+        """Search non-standard Firefox profile dirs browser_cookie3 may miss."""
+        for profile_dir in _FIREFOX_EXTRA_PROFILE_DIRS:
+            expanded = os.path.expanduser(profile_dir)
+            if not os.path.isdir(expanded):
+                continue
+            for entry in os.scandir(expanded):
+                if not entry.is_dir():
+                    continue
+                candidate = os.path.join(entry.path, 'cookies.sqlite')
+                if os.path.isfile(candidate):
+                    return candidate
+        return None
+
     def get_browser_cookies(server_info, spawned=False):
         orig_url = server_info
         if server_info.startswith('https://'):
             server_info = server_info[8:]
         if server_info.startswith('http://'):
             server_info = server_info[7:]
-        for check in [browser_cookie3.chrome, browser_cookie3.chromium,
-                      browser_cookie3.firefox]:
+
+        firefox_cookie_file = _find_firefox_cookie_file()
+
+        checks = [
+            (browser_cookie3.chrome, {}),
+            (browser_cookie3.chromium, {}),
+            (browser_cookie3.firefox,
+             {'cookie_file': firefox_cookie_file} if firefox_cookie_file else {}),
+        ]
+
+        for check, kwargs in checks:
             try:
-                cookies = check(domain_name=server_info)
-            except:
+                cookies = check(domain_name=server_info, **kwargs)
+            except browser_cookie3.BrowserCookieError as e:
+                cookies = []
+            except Exception as e:
                 cookies = []
             for cookie in cookies:
                 if cookie.name in ['DWRSESSIONID', 'JSESSIONID',
                                    'JiraSDSamlssoLoginV2',
-                                   'atlassian.account.xsrf.token']:
+                                   'atlassian.xsrf.token',
+                                   'atlassian.account.xsrf.token',
+                                   'tenant.session.token']:
                     return cookies
         if not spawned:
             try:
                 import webbrowser
-                print("Attempting web redirection...")
                 webbrowser.open(orig_url + '/login')
-                print("Retrying to pull cookies for the next minute...")
 
                 for _ in range(60):
                     cookies = get_browser_cookies(server_info, True)
@@ -88,13 +119,12 @@ try:
                         return cookies
                     time.sleep(1)
 
-            except:
+            except Exception:
                 pass
-            print("Failed to pull cookies.")
             return None
         return None
-except:
-    def get_browser_cookies(server_info):
+except ImportError:
+    def get_browser_cookies(server_info, spawned=False):
         return None
 
 
