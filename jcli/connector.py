@@ -106,7 +106,8 @@ try:
                                    'JiraSDSamlssoLoginV2',
                                    'atlassian.xsrf.token',
                                    'atlassian.account.xsrf.token',
-                                   'tenant.session.token']:
+                                   'tenant.session.token'] and \
+                   server_info in cookie.domain:
                     return cookies
         if not spawned:
             try:
