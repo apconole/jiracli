@@ -97,9 +97,9 @@ try:
         for check, kwargs in checks:
             try:
                 cookies = check(domain_name=server_info, **kwargs)
-            except browser_cookie3.BrowserCookieError as e:
+            except browser_cookie3.BrowserCookieError:
                 cookies = []
-            except Exception as e:
+            except Exception:
                 cookies = []
             for cookie in cookies:
                 if cookie.name in ['DWRSESSIONID', 'JSESSIONID',
